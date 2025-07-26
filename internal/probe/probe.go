@@ -1,0 +1,302 @@
+package probe
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	kafkaprobe "github.com/yourorg/prober/internal/probe/kafka"
+	mysqlprobe "github.com/yourorg/prober/internal/probe/mysql"
+	redisprobe "github.com/yourorg/prober/internal/probe/redis"
+	"github.com/yourorg/prober/internal/probe/s3"
+)
+
+func RunAll(ctx context.Context, cfg *Config) {
+	// S3 probes (read/write)
+
+	type statusMsg struct {
+		TargetType string
+		Cluster    string
+		Host       string
+		Status     string
+		Err        error
+	}
+	statusCh := make(chan statusMsg, 100)
+
+	// Helper to launch a probe with resolved duration
+	launchProbeWithDuration := func(ctx context.Context, ms int, clusterName, host, targetType string, probe Prober, statusCh chan<- statusMsg, onSuccess, onFailure func()) {
+		go func() {
+			ticker := newTickerWithContext(ctx, ms)
+			defer ticker.Stop()
+			for range ticker.C {
+				err := probe.Probe(ctx)
+				status := "OK"
+				if err != nil {
+					status = "ERROR"
+					if onFailure != nil {
+						onFailure()
+					}
+				} else {
+					if onSuccess != nil {
+						onSuccess()
+					}
+				}
+				statusCh <- statusMsg{
+					TargetType: targetType,
+					Cluster:    clusterName,
+					Host:       host,
+					Status:     status,
+					Err:        err,
+				}
+			}
+		}()
+	}
+
+	for _, cluster := range cfg.S3.Clusters {
+		dur := cluster.Duration.ToDuration(
+			cfg.S3.DefaultDuration.ToDuration(
+				cfg.DefaultDuration.ToDuration(10 * time.Second),
+			),
+		)
+		ms := int(dur.Milliseconds())
+		if ms < 100 {
+			ms = 100
+		}
+		objectKey := "probe-test-file"
+		if cluster.Tasks.Write {
+			probe := &s3.WriteProbe{
+				Endpoint:  cluster.Endpoint,
+				Region:    cluster.Region,
+				AccessKey: cluster.AccessKey,
+				SecretKey: cluster.SecretKey,
+				Bucket:    cluster.Bucket,
+				UseSSL:    cluster.UseSSL,
+				ObjectKey: objectKey,
+			}
+			launchProbeWithDuration(ctx, ms, cluster.Name, "", "S3-WRITE", probe, statusCh,
+				func() { IncProbeSuccess("s3", "write", cluster.Endpoint, cluster.Name) },
+				func() { IncProbeFailure("s3", "write", cluster.Endpoint, cluster.Name) },
+			)
+		}
+		if cluster.Tasks.Read {
+			probe := &s3.ReadProbe{
+				Endpoint:  cluster.Endpoint,
+				Region:    cluster.Region,
+				AccessKey: cluster.AccessKey,
+				SecretKey: cluster.SecretKey,
+				Bucket:    cluster.Bucket,
+				UseSSL:    cluster.UseSSL,
+				ObjectKey: objectKey,
+			}
+			launchProbeWithDuration(ctx, ms, cluster.Name, "", "S3-READ", probe, statusCh,
+				func() { IncProbeSuccess("s3", "read", cluster.Endpoint, cluster.Name) },
+				func() { IncProbeFailure("s3", "read", "", cluster.Endpoint) },
+			)
+		}
+	}
+
+	// MySQL probes (read/write)
+	for _, cluster := range cfg.MySQL.Clusters {
+		dur := cluster.Duration.ToDuration(
+			cfg.MySQL.DefaultDuration.ToDuration(
+				cfg.DefaultDuration.ToDuration(10 * time.Second),
+			),
+		)
+		ms := int(dur.Milliseconds())
+		if ms < 100 {
+			ms = 100
+		}
+		// Launch read probes for each host in ReadHosts
+		if len(cluster.ReadHosts) > 0 {
+			for _, host := range cluster.ReadHosts {
+				probe := &mysqlprobe.ReadProbe{
+					Host:     host,
+					User:     cluster.User,
+					Password: cluster.Password,
+					Database: cluster.Database,
+				}
+				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MySQL-READ", probe, statusCh,
+					func() { IncProbeSuccess("mysql", "read", host, cluster.Name) },
+					func() { IncProbeFailure("mysql", "read", host, cluster.Name) },
+				)
+			}
+		}
+		// Launch write probes for each host in WriteHosts
+		if len(cluster.WriteHosts) > 0 {
+			for _, host := range cluster.WriteHosts {
+				probe := &mysqlprobe.WriteProbe{
+					Host:     host,
+					User:     cluster.User,
+					Password: cluster.Password,
+					Database: cluster.Database,
+				}
+				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MySQL-WRITE", probe, statusCh,
+					func() { IncProbeSuccess("mysql", "write", host, cluster.Name) },
+					func() { IncProbeFailure("mysql", "write", host, cluster.Name) },
+				)
+			}
+		}
+	}
+
+	// Kafka probes (read/write)
+	for _, cluster := range cfg.Kafka.Clusters {
+		dur := cluster.Duration.ToDuration(
+			cfg.Kafka.DefaultDuration.ToDuration(
+				cfg.DefaultDuration.ToDuration(10 * time.Second),
+			),
+		)
+		ms := int(dur.Milliseconds())
+		if ms < 100 {
+			ms = 100
+		}
+		readProbe := &kafkaprobe.ReadProbe{
+			Brokers: cluster.Brokers,
+			Topic:   cluster.Topic,
+		}
+		launchProbeWithDuration(ctx, ms, cluster.Name, "", "Kafka-READ", readProbe, statusCh, nil, nil)
+
+		writeProbe := &kafkaprobe.WriteProbe{
+			Brokers: cluster.Brokers,
+			Topic:   cluster.Topic,
+		}
+		launchProbeWithDuration(ctx, ms, cluster.Name, "", "Kafka-WRITE", writeProbe, statusCh, nil, nil)
+	}
+
+	// Redis probes (read/write)
+	for _, cluster := range cfg.Redis.Clusters {
+		dur := cluster.Duration.ToDuration(
+			cfg.Redis.DefaultDuration.ToDuration(
+				cfg.Redis.DefaultDuration.ToDuration(
+					cfg.DefaultDuration.ToDuration(10 * time.Second),
+				),
+			),
+		)
+		ms := int(dur.Milliseconds())
+		if ms < 100 {
+			ms = 100
+		}
+		if cluster.Tasks.Read {
+			for _, node := range cluster.Nodes {
+				probe := &redisprobe.ReadProbe{
+					Addr:     node,
+					Password: cluster.Password,
+				}
+				launchProbeWithDuration(ctx, ms, cluster.Name, node, "Redis-READ", probe, statusCh,
+					func() { IncProbeSuccess("redis", "read", node, cluster.Name) },
+					func() { IncProbeFailure("redis", "read", node, cluster.Name) },
+				)
+			}
+		}
+		if cluster.Tasks.Write {
+			for _, node := range cluster.Nodes {
+				probe := &redisprobe.WriteProbe{
+					Addr:     node,
+					Password: cluster.Password,
+				}
+				launchProbeWithDuration(ctx, ms, cluster.Name, node, "Redis-WRITE", probe, statusCh,
+					func() { IncProbeSuccess("redis", "write", node, cluster.Name) },
+					func() { IncProbeFailure("redis", "write", node, cluster.Name) },
+				)
+			}
+		}
+	}
+
+	// RedisCluster probes (read/write)
+	for _, cluster := range cfg.RedisCluster.Clusters {
+		dur := cluster.Duration.ToDuration(
+			cfg.RedisCluster.DefaultDuration.ToDuration(
+				cfg.RedisCluster.DefaultDuration.ToDuration(
+					cfg.DefaultDuration.ToDuration(10 * time.Second),
+				),
+			),
+		)
+		ms := int(dur.Milliseconds())
+		if ms < 100 {
+			ms = 100
+		}
+		if cluster.Tasks.Read {
+			probe := &redisprobe.ClusterReadProbe{
+				Addrs:    cluster.Nodes,
+				Password: cluster.Password,
+			}
+			launchProbeWithDuration(ctx, ms, cluster.Name, "", "RedisCluster-READ", probe, statusCh,
+				func() { IncProbeSuccess("redisCluster", "read", "", cluster.Name) },
+				func() { IncProbeFailure("redisCluster", "read", "", cluster.Name) },
+			)
+		}
+		if cluster.Tasks.Write {
+			probe := &redisprobe.ClusterWriteProbe{
+				Addrs:    cluster.Nodes,
+				Password: cluster.Password,
+			}
+			launchProbeWithDuration(ctx, ms, cluster.Name, "", "RedisCluster-WRITE", probe, statusCh,
+				func() { IncProbeSuccess("redisCluster", "write", "", cluster.Name) },
+				func() { IncProbeFailure("redisCluster", "write", "", cluster.Name) },
+			)
+		}
+	}
+
+	// Print status updates
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Probing stopped.")
+			return
+		case msg := <-statusCh:
+			if msg.Status == "OK" {
+				if msg.Host != "" {
+					fmt.Printf("[%s][%s][%s] OK\n", msg.TargetType, msg.Cluster, msg.Host)
+				} else {
+					fmt.Printf("[%s][%s] OK\n", msg.TargetType, msg.Cluster)
+				}
+			} else {
+				if msg.Host != "" {
+					fmt.Printf("[%s][%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Host, msg.Err)
+				} else {
+					fmt.Printf("[%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Err)
+				}
+			}
+		}
+	}
+}
+
+// newTickerWithContext returns a ticker that stops when ctx is done.
+func newTickerWithContext(ctx context.Context, ms int) *tickerWithContext {
+	t := &tickerWithContext{
+		C:    make(chan struct{}),
+		stop: make(chan struct{}),
+	}
+	go func() {
+		tick := make(chan struct{}, 1)
+		go func() {
+			for {
+				tick <- struct{}{}
+				time.Sleep(time.Duration(ms) * time.Millisecond)
+			}
+		}()
+		for {
+			select {
+			case <-ctx.Done():
+				close(t.C)
+				return
+			case <-t.stop:
+				close(t.C)
+				return
+			case <-tick:
+				t.C <- struct{}{}
+			}
+		}
+	}()
+	return t
+}
+
+type tickerWithContext struct {
+	C    chan struct{}
+	stop chan struct{}
+}
+
+func (t *tickerWithContext) Stop() {
+	close(t.stop)
+}
+
+// No-op: all probe logic now uses Prober interface and structs

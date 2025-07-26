@@ -1,0 +1,71 @@
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    restart: unless-stopped
+  minio:
+    image: minio/minio:latest # Or specify a version like 'RELEASE.2024-07-23T15-54-02Z'
+    container_name: minio
+    ports:
+      - "9000:9000" # MinIO API port
+      - "9001:9001" # MinIO Console (web UI) port
+    environment:
+      # Change these credentials for production, but for testing, defaults are fine.
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ~/minio-data:/data # Persistent storage for your S3 objects
+    command: server /data --console-address ":9001" # Start MinIO server and console
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c '
+        sleep 5 && \
+        mc alias set myminio http://minio:9000 minioadmin minioadmin && \
+        mc mb -p myminio/test-s3-bucket || true && \
+        mc policy set public myminio/test-s3-bucket || true
+      '
+  redis:
+    image: redis:7-alpine
+    container_name: test-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "no"]
+
+  redis-cluster:
+    image: redis:7-alpine
+    container_name: redis-cluster
+    ports:
+      - "7001:7001"
+      - "7002:7002"
+      - "7003:7003"
+    volumes:
+      - /tmp:/data
+    command: ["sh", "-c",
+      "redis-server --port 7001 --cluster-enabled yes --cluster-config-file nodes-7001.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7001 --cluster-preferred-endpoint-type ip & \
+       redis-server --port 7002 --cluster-enabled yes --cluster-config-file nodes-7002.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7002 --cluster-preferred-endpoint-type ip & \
+       redis-server --port 7003 --cluster-enabled yes --cluster-config-file nodes-7003.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7003 --cluster-preferred-endpoint-type ip && \
+       wait"
+    ]
+
+  redis-cluster-init:
+    image: redis:7-alpine
+    depends_on:
+      - redis-cluster
+    entrypoint: ["sh", "-c", "sleep 3 && echo 'yes' | redis-cli --cluster create redis-cluster:7001 redis-cluster:7002 redis-cluster:7003 --cluster-replicas 0"]
