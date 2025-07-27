@@ -115,7 +115,7 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		if ms < 100 {
 			ms = 100
 		}
-		if len(cluster.ReadHosts) > 0 {
+		if len(cluster.ReadHosts) > 0 && cluster.Tasks.Read {
 			for _, host := range cluster.ReadHosts {
 				probe, err := mysqlprobe.NewReadProbe(host, cluster.User, cluster.Password, cluster.Database)
 				if err != nil {
@@ -128,7 +128,7 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 				)
 			}
 		}
-		if len(cluster.WriteHosts) > 0 {
+		if len(cluster.WriteHosts) > 0 && cluster.Tasks.Write {
 			for _, host := range cluster.WriteHosts {
 				probe, err := mysqlprobe.NewWriteProbe(host, cluster.User, cluster.Password, cluster.Database)
 				if err != nil {
