@@ -2,35 +2,72 @@ package redis
 
 import (
 	"context"
+
 	"github.com/go-redis/redis/v8"
 )
 
 type ClusterReadProbe struct {
 	Addrs    []string
 	Password string
+	client   *redis.ClusterClient
+}
+
+// NewClusterReadProbe creates a ClusterReadProbe with a persistent client
+func NewClusterReadProbe(addrs []string, password string) *ClusterReadProbe {
+	client := redis.NewClusterClient(&redis.ClusterOptions{
+		Addrs:    addrs,
+		Password: password,
+	})
+	return &ClusterReadProbe{
+		Addrs:    addrs,
+		Password: password,
+		client:   client,
+	}
 }
 
 func (p *ClusterReadProbe) Probe(ctx context.Context) error {
-	rdb := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:    p.Addrs,
-		Password: p.Password,
-	})
-
-	defer rdb.Close()
-	_, err := rdb.Ping(ctx).Result()
+	_, err := p.client.Ping(ctx).Result()
+	if err != nil {
+		// Try to reconnect once
+		p.client.Close()
+		p.client = redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:    p.Addrs,
+			Password: p.Password,
+		})
+		_, err = p.client.Ping(ctx).Result()
+	}
 	return err
 }
 
 type ClusterWriteProbe struct {
 	Addrs    []string
 	Password string
+	client   *redis.ClusterClient
+}
+
+// NewClusterWriteProbe creates a ClusterWriteProbe with a persistent client
+func NewClusterWriteProbe(addrs []string, password string) *ClusterWriteProbe {
+	client := redis.NewClusterClient(&redis.ClusterOptions{
+		Addrs:    addrs,
+		Password: password,
+	})
+	return &ClusterWriteProbe{
+		Addrs:    addrs,
+		Password: password,
+		client:   client,
+	}
 }
 
 func (p *ClusterWriteProbe) Probe(ctx context.Context) error {
-	rdb := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:    p.Addrs,
-		Password: p.Password,
-	})
-	defer rdb.Close()
-	return rdb.Set(ctx, "probe_key", "ok", 0).Err()
+	err := p.client.Set(ctx, "probe_key", "ok", 0).Err()
+	if err != nil {
+		// Try to reconnect once
+		p.client.Close()
+		p.client = redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:    p.Addrs,
+			Password: p.Password,
+		})
+		err = p.client.Set(ctx, "probe_key", "ok", 0).Err()
+	}
+	return err
 }

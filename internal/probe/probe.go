@@ -185,10 +185,7 @@ func RunRedis(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		}
 		if cluster.Tasks.Read {
 			for _, node := range cluster.Nodes {
-				probe := &redisprobe.ReadProbe{
-					Addr:     node,
-					Password: cluster.Password,
-				}
+				probe := redisprobe.NewReadProbe(node, cluster.Password)
 				launchProbeWithDuration(ctx, ms, cluster.Name, node, "Redis-READ", probe, statusCh,
 					func() { IncProbeSuccess("redis", "read", node, cluster.Name) },
 					func() { IncProbeFailure("redis", "read", node, cluster.Name) },
@@ -197,10 +194,7 @@ func RunRedis(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		}
 		if cluster.Tasks.Write {
 			for _, node := range cluster.Nodes {
-				probe := &redisprobe.WriteProbe{
-					Addr:     node,
-					Password: cluster.Password,
-				}
+				probe := redisprobe.NewWriteProbe(node, cluster.Password)
 				launchProbeWithDuration(ctx, ms, cluster.Name, node, "Redis-WRITE", probe, statusCh,
 					func() { IncProbeSuccess("redis", "write", node, cluster.Name) },
 					func() { IncProbeFailure("redis", "write", node, cluster.Name) },
@@ -224,20 +218,14 @@ func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg
 			ms = 100
 		}
 		if cluster.Tasks.Read {
-			probe := &redisprobe.ClusterReadProbe{
-				Addrs:    cluster.Nodes,
-				Password: cluster.Password,
-			}
+			probe := redisprobe.NewClusterReadProbe(cluster.Nodes, cluster.Password)
 			launchProbeWithDuration(ctx, ms, cluster.Name, "", "RedisCluster-READ", probe, statusCh,
 				func() { IncProbeSuccess("redisCluster", "read", "", cluster.Name) },
 				func() { IncProbeFailure("redisCluster", "read", "", cluster.Name) },
 			)
 		}
 		if cluster.Tasks.Write {
-			probe := &redisprobe.ClusterWriteProbe{
-				Addrs:    cluster.Nodes,
-				Password: cluster.Password,
-			}
+			probe := redisprobe.NewClusterWriteProbe(cluster.Nodes, cluster.Password)
 			launchProbeWithDuration(ctx, ms, cluster.Name, "", "RedisCluster-WRITE", probe, statusCh,
 				func() { IncProbeSuccess("redisCluster", "write", "", cluster.Name) },
 				func() { IncProbeFailure("redisCluster", "write", "", cluster.Name) },
