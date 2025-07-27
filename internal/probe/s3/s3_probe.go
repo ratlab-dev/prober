@@ -20,34 +20,72 @@ type WriteProbe struct {
 	Bucket    string
 	UseSSL    bool
 	ObjectKey string // e.g. "probe-test-file"
+	client    *s3.Client
+}
+
+// NewWriteProbe creates a WriteProbe with a persistent S3 client
+func NewWriteProbe(endpoint, region, accessKey, secretKey, bucket, objectKey string, useSSL bool) *WriteProbe {
+	return &WriteProbe{
+		Endpoint:  endpoint,
+		Region:    region,
+		AccessKey: accessKey,
+		SecretKey: secretKey,
+		Bucket:    bucket,
+		UseSSL:    useSSL,
+		ObjectKey: objectKey,
+	}
 }
 
 func (p *WriteProbe) Probe(ctx context.Context) error {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(p.Region),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(p.AccessKey, p.SecretKey, "")),
-		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-				return aws.Endpoint{URL: p.Endpoint, HostnameImmutable: true, SigningRegion: p.Region}, nil
-			},
-		)),
-	)
-	if err != nil {
-		return err
+	if p.client == nil {
+		cfg, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(p.Region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(p.AccessKey, p.SecretKey, "")),
+			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
+				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+					return aws.Endpoint{URL: p.Endpoint, HostnameImmutable: true, SigningRegion: p.Region}, nil
+				},
+			)),
+		)
+		if err != nil {
+			return err
+		}
+		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+			o.UsePathStyle = true
+		})
 	}
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-	})
-	// Write a 100-byte random file
 	buf := make([]byte, 100)
 	if _, err := rand.Read(buf); err != nil {
 		return err
 	}
-	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+	_, err := p.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: &p.Bucket,
 		Key:    &p.ObjectKey,
 		Body:   bytes.NewReader(buf),
 	})
+	if err != nil {
+		// Try to recover by recreating the client once
+		cfg, cfgErr := config.LoadDefaultConfig(ctx,
+			config.WithRegion(p.Region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(p.AccessKey, p.SecretKey, "")),
+			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
+				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+					return aws.Endpoint{URL: p.Endpoint, HostnameImmutable: true, SigningRegion: p.Region}, nil
+				},
+			)),
+		)
+		if cfgErr != nil {
+			return err // return original error if recovery fails
+		}
+		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+			o.UsePathStyle = true
+		})
+		_, err = p.client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket: &p.Bucket,
+			Key:    &p.ObjectKey,
+			Body:   bytes.NewReader(buf),
+		})
+	}
 	return err
 }
 
@@ -59,33 +97,70 @@ type ReadProbe struct {
 	Bucket    string
 	UseSSL    bool
 	ObjectKey string // e.g. "probe-test-file"
+	client    *s3.Client
+}
+
+// NewReadProbe creates a ReadProbe with a persistent S3 client
+func NewReadProbe(endpoint, region, accessKey, secretKey, bucket, objectKey string, useSSL bool) *ReadProbe {
+	return &ReadProbe{
+		Endpoint:  endpoint,
+		Region:    region,
+		AccessKey: accessKey,
+		SecretKey: secretKey,
+		Bucket:    bucket,
+		UseSSL:    useSSL,
+		ObjectKey: objectKey,
+	}
 }
 
 func (p *ReadProbe) Probe(ctx context.Context) error {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(p.Region),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(p.AccessKey, p.SecretKey, "")),
-		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-				return aws.Endpoint{URL: p.Endpoint, HostnameImmutable: true, SigningRegion: p.Region}, nil
-			},
-		)),
-	)
-	if err != nil {
-		return err
+	if p.client == nil {
+		cfg, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(p.Region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(p.AccessKey, p.SecretKey, "")),
+			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
+				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+					return aws.Endpoint{URL: p.Endpoint, HostnameImmutable: true, SigningRegion: p.Region}, nil
+				},
+			)),
+		)
+		if err != nil {
+			return err
+		}
+		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+			o.UsePathStyle = true
+		})
 	}
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-	})
-	out, err := client.GetObject(ctx, &s3.GetObjectInput{
+	out, err := p.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: &p.Bucket,
 		Key:    &p.ObjectKey,
 	})
 	if err != nil {
-		return err
+		// Try to recover by recreating the client once
+		cfg, cfgErr := config.LoadDefaultConfig(ctx,
+			config.WithRegion(p.Region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(p.AccessKey, p.SecretKey, "")),
+			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
+				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+					return aws.Endpoint{URL: p.Endpoint, HostnameImmutable: true, SigningRegion: p.Region}, nil
+				},
+			)),
+		)
+		if cfgErr != nil {
+			return err // return original error if recovery fails
+		}
+		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+			o.UsePathStyle = true
+		})
+		out, err = p.client.GetObject(ctx, &s3.GetObjectInput{
+			Bucket: &p.Bucket,
+			Key:    &p.ObjectKey,
+		})
+		if err != nil {
+			return err
+		}
 	}
 	defer out.Body.Close()
-	// Read the file to completion
 	_, err = io.ReadAll(out.Body)
 	return err
 }

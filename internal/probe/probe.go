@@ -73,16 +73,15 @@ func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		}
 		objectKey := "probe-test-file"
 		if cluster.Tasks.Write {
-			probe := &s3.WriteProbe{
-				Endpoint:  cluster.Endpoint,
-				Region:    cluster.Region,
-				AccessKey: cluster.AccessKey,
-				SecretKey: cluster.SecretKey,
-				Bucket:    cluster.Bucket,
-				UseSSL:    cluster.UseSSL,
-				ObjectKey: objectKey,
-			}
-			launchProbeWithDuration(ctx, ms, cluster.Name, "", "S3-WRITE", probe, statusCh,
+			probe := s3.NewWriteProbe(cluster.Endpoint,
+				cluster.Region,
+				cluster.AccessKey,
+				cluster.SecretKey,
+				cluster.Bucket,
+				objectKey,
+				cluster.UseSSL,
+			)
+			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3-WRITE", probe, statusCh,
 				func() { IncProbeSuccess("s3", "write", cluster.Endpoint, cluster.Name) },
 				func() { IncProbeFailure("s3", "write", cluster.Endpoint, cluster.Name) },
 			)
@@ -97,7 +96,7 @@ func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 				UseSSL:    cluster.UseSSL,
 				ObjectKey: objectKey,
 			}
-			launchProbeWithDuration(ctx, ms, cluster.Name, "", "S3-READ", probe, statusCh,
+			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3-READ", probe, statusCh,
 				func() { IncProbeSuccess("s3", "read", cluster.Endpoint, cluster.Name) },
 				func() { IncProbeFailure("s3", "read", "", cluster.Endpoint) },
 			)

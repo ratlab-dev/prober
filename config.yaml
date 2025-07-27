@@ -9,7 +9,7 @@ s3:
       secretKey: minioadmin
       bucket: test-s3-bucket
       useSSL: false
-      duration: 500ms
+      duration: 5s
       tasks:
         read: true
         write: true
@@ -32,7 +32,7 @@ mysql:
       user: testuser
       password: testpass
       database: testdb
-      duration: 500ms
+      duration: 5s
       read_hosts:
         - 127.0.0.1:3306
       write_hosts:
@@ -40,13 +40,13 @@ mysql:
 
 # Example for redis (single node)
 redis:
-  defaultDuration: 500ms  # optional, overrides global and per-type for redis
+  defaultDuration: 5s  # optional, overrides global and per-type for redis
   clusters:
     - name: main-redis
       nodes:
         - 127.0.0.1:6379
       password: ""
-      duration: 400ms      # optional, overrides all above for this cluster
+      duration: 5s     # optional, overrides all above for this cluster
       tasks:
         read: true
         write: true

@@ -10,39 +10,23 @@ import (
 
 // NewReadProbe creates a ReadProbe and initializes the DB connection
 func NewReadProbe(host, user, password, database string) (*ReadProbe, error) {
-	if host == "" || user == "" || database == "" {
-		return &ReadProbe{Host: host, User: user, Password: password, Database: database}, nil
-	}
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, host, database)
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, err
-	}
 	return &ReadProbe{
 		Host:     host,
 		User:     user,
 		Password: password,
 		Database: database,
-		DB:       db,
+		DB:       nil,
 	}, nil
 }
 
 // NewWriteProbe creates a WriteProbe and initializes the DB connection
 func NewWriteProbe(host, user, password, database string) (*WriteProbe, error) {
-	if host == "" || user == "" || database == "" {
-		return &WriteProbe{Host: host, User: user, Password: password, Database: database}, nil
-	}
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, host, database)
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, err
-	}
 	return &WriteProbe{
 		Host:     host,
 		User:     user,
 		Password: password,
 		Database: database,
-		DB:       db,
+		DB:       nil,
 	}, nil
 }
 
