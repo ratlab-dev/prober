@@ -3,6 +3,7 @@ package probe
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	kafkaprobe "github.com/yourorg/prober/internal/probe/kafka"
@@ -117,11 +118,10 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		}
 		if len(cluster.ReadHosts) > 0 {
 			for _, host := range cluster.ReadHosts {
-				probe := &mysqlprobe.ReadProbe{
-					Host:     host,
-					User:     cluster.User,
-					Password: cluster.Password,
-					Database: cluster.Database,
+				probe, err := mysqlprobe.NewReadProbe(host, cluster.User, cluster.Password, cluster.Database)
+				if err != nil {
+					log.Printf("culd not create mysql probe for cluster: %s, host: %s, err: %v", cluster.Name, host, err)
+					continue
 				}
 				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MySQL-READ", probe, statusCh,
 					func() { IncProbeSuccess("mysql", "read", host, cluster.Name) },
@@ -131,11 +131,10 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		}
 		if len(cluster.WriteHosts) > 0 {
 			for _, host := range cluster.WriteHosts {
-				probe := &mysqlprobe.WriteProbe{
-					Host:     host,
-					User:     cluster.User,
-					Password: cluster.Password,
-					Database: cluster.Database,
+				probe, err := mysqlprobe.NewWriteProbe(host, cluster.User, cluster.Password, cluster.Database)
+				if err != nil {
+					log.Printf("culd not create mysql probe for cluster: %s, host: %s, err: %v", cluster.Name, host, err)
+					continue
 				}
 				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MySQL-WRITE", probe, statusCh,
 					func() { IncProbeSuccess("mysql", "write", host, cluster.Name) },

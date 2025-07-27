@@ -8,11 +8,50 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// NewReadProbe creates a ReadProbe and initializes the DB connection
+func NewReadProbe(host, user, password, database string) (*ReadProbe, error) {
+	if host == "" || user == "" || database == "" {
+		return &ReadProbe{Host: host, User: user, Password: password, Database: database}, nil
+	}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, host, database)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+	return &ReadProbe{
+		Host:     host,
+		User:     user,
+		Password: password,
+		Database: database,
+		DB:       db,
+	}, nil
+}
+
+// NewWriteProbe creates a WriteProbe and initializes the DB connection
+func NewWriteProbe(host, user, password, database string) (*WriteProbe, error) {
+	if host == "" || user == "" || database == "" {
+		return &WriteProbe{Host: host, User: user, Password: password, Database: database}, nil
+	}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, host, database)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+	return &WriteProbe{
+		Host:     host,
+		User:     user,
+		Password: password,
+		Database: database,
+		DB:       db,
+	}, nil
+}
+
 type ReadProbe struct {
 	Host     string
 	User     string
 	Password string
 	Database string
+	DB       *sql.DB
 }
 
 func (p *ReadProbe) Probe(ctx context.Context) error {
@@ -20,14 +59,16 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 		// Noop if config is incomplete
 		return nil
 	}
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", p.User, p.Password, p.Host, p.Database)
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return err
+	if p.DB == nil {
+		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", p.User, p.Password, p.Host, p.Database)
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			return err
+		}
+		p.DB = db
 	}
-	defer db.Close()
 	var one int
-	err = db.QueryRowContext(ctx, "SELECT 1").Scan(&one)
+	err := p.DB.QueryRowContext(ctx, "SELECT 1").Scan(&one)
 	if err != nil {
 		return err
 	}
@@ -42,6 +83,7 @@ type WriteProbe struct {
 	User     string
 	Password string
 	Database string
+	DB       *sql.DB
 }
 
 func (p *WriteProbe) Probe(ctx context.Context) error {
@@ -49,21 +91,23 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 		// Noop if config is incomplete
 		return nil
 	}
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", p.User, p.Password, p.Host, p.Database)
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return err
+	if p.DB == nil {
+		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s", p.User, p.Password, p.Host, p.Database)
+		db, err := sql.Open("mysql", dsn)
+		if err != nil {
+			return err
+		}
+		p.DB = db
 	}
-	defer db.Close()
 
 	// Ensure probe_test table exists
-	_, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS probe_test (id INT PRIMARY KEY AUTO_INCREMENT, val VARCHAR(32))`)
+	_, err := p.DB.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS probe_test (id INT PRIMARY KEY AUTO_INCREMENT, val VARCHAR(32))`)
 	if err != nil {
 		return fmt.Errorf("failed to create probe_test table: %w", err)
 	}
 
 	// Insert a test row
-	res, err := db.ExecContext(ctx, `INSERT INTO probe_test (val) VALUES ('probe')`)
+	res, err := p.DB.ExecContext(ctx, `INSERT INTO probe_test (val) VALUES ('probe')`)
 	if err != nil {
 		return fmt.Errorf("failed to insert test row: %w", err)
 	}
@@ -73,7 +117,7 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 	}
 
 	// Delete the test row
-	_, err = db.ExecContext(ctx, `DELETE FROM probe_test WHERE id = ?`, id)
+	_, err = p.DB.ExecContext(ctx, `DELETE FROM probe_test WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete test row: %w", err)
 	}
