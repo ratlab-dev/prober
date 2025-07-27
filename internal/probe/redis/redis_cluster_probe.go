@@ -2,8 +2,6 @@ package redis
 
 import (
 	"context"
-	"log"
-
 	"github.com/go-redis/redis/v8"
 )
 
@@ -19,7 +17,6 @@ func (p *ClusterReadProbe) Probe(ctx context.Context) error {
 	})
 
 	defer rdb.Close()
-	log.Println("Addrs", rdb.Options().Addrs)
 	_, err := rdb.Ping(ctx).Result()
 	return err
 }

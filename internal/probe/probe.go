@@ -11,47 +11,55 @@ import (
 	"github.com/yourorg/prober/internal/probe/s3"
 )
 
-func RunAll(ctx context.Context, cfg *Config) {
-	// S3 probes (read/write)
+type statusMsg struct {
+	TargetType string
+	Cluster    string
+	Host       string
+	Status     string
+	Err        error
+}
 
-	type statusMsg struct {
-		TargetType string
-		Cluster    string
-		Host       string
-		Status     string
-		Err        error
-	}
+func RunAll(ctx context.Context, cfg *Config) {
 	statusCh := make(chan statusMsg, 100)
 
-	// Helper to launch a probe with resolved duration
-	launchProbeWithDuration := func(ctx context.Context, ms int, clusterName, host, targetType string, probe Prober, statusCh chan<- statusMsg, onSuccess, onFailure func()) {
-		go func() {
-			ticker := newTickerWithContext(ctx, ms)
-			defer ticker.Stop()
-			for range ticker.C {
-				err := probe.Probe(ctx)
-				status := "OK"
-				if err != nil {
-					status = "ERROR"
-					if onFailure != nil {
-						onFailure()
-					}
-				} else {
-					if onSuccess != nil {
-						onSuccess()
-					}
+	RunS3(ctx, cfg, statusCh)
+	RunMySQL(ctx, cfg, statusCh)
+	RunKafka(ctx, cfg, statusCh)
+	RunRedis(ctx, cfg, statusCh)
+	RunRedisCluster(ctx, cfg, statusCh)
+
+	printStatusUpdates(ctx, statusCh)
+}
+
+func launchProbeWithDuration(ctx context.Context, ms int, clusterName, host, targetType string, probe Prober, statusCh chan<- statusMsg, onSuccess, onFailure func()) {
+	go func() {
+		ticker := newTickerWithContext(ctx, ms)
+		defer ticker.Stop()
+		for range ticker.C {
+			err := probe.Probe(ctx)
+			status := "OK"
+			if err != nil {
+				status = "ERROR"
+				if onFailure != nil {
+					onFailure()
 				}
-				statusCh <- statusMsg{
-					TargetType: targetType,
-					Cluster:    clusterName,
-					Host:       host,
-					Status:     status,
-					Err:        err,
+			} else {
+				if onSuccess != nil {
+					onSuccess()
 				}
 			}
-		}()
-	}
+			statusCh <- statusMsg{
+				TargetType: targetType,
+				Cluster:    clusterName,
+				Host:       host,
+				Status:     status,
+				Err:        err,
+			}
+		}
+	}()
+}
 
+func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.S3.Clusters {
 		dur := cluster.Duration.ToDuration(
 			cfg.S3.DefaultDuration.ToDuration(
@@ -94,8 +102,9 @@ func RunAll(ctx context.Context, cfg *Config) {
 			)
 		}
 	}
+}
 
-	// MySQL probes (read/write)
+func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.MySQL.Clusters {
 		dur := cluster.Duration.ToDuration(
 			cfg.MySQL.DefaultDuration.ToDuration(
@@ -106,7 +115,6 @@ func RunAll(ctx context.Context, cfg *Config) {
 		if ms < 100 {
 			ms = 100
 		}
-		// Launch read probes for each host in ReadHosts
 		if len(cluster.ReadHosts) > 0 {
 			for _, host := range cluster.ReadHosts {
 				probe := &mysqlprobe.ReadProbe{
@@ -121,7 +129,6 @@ func RunAll(ctx context.Context, cfg *Config) {
 				)
 			}
 		}
-		// Launch write probes for each host in WriteHosts
 		if len(cluster.WriteHosts) > 0 {
 			for _, host := range cluster.WriteHosts {
 				probe := &mysqlprobe.WriteProbe{
@@ -137,8 +144,9 @@ func RunAll(ctx context.Context, cfg *Config) {
 			}
 		}
 	}
+}
 
-	// Kafka probes (read/write)
+func RunKafka(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.Kafka.Clusters {
 		dur := cluster.Duration.ToDuration(
 			cfg.Kafka.DefaultDuration.ToDuration(
@@ -161,8 +169,9 @@ func RunAll(ctx context.Context, cfg *Config) {
 		}
 		launchProbeWithDuration(ctx, ms, cluster.Name, "", "Kafka-WRITE", writeProbe, statusCh, nil, nil)
 	}
+}
 
-	// Redis probes (read/write)
+func RunRedis(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.Redis.Clusters {
 		dur := cluster.Duration.ToDuration(
 			cfg.Redis.DefaultDuration.ToDuration(
@@ -200,8 +209,9 @@ func RunAll(ctx context.Context, cfg *Config) {
 			}
 		}
 	}
+}
 
-	// RedisCluster probes (read/write)
+func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.RedisCluster.Clusters {
 		dur := cluster.Duration.ToDuration(
 			cfg.RedisCluster.DefaultDuration.ToDuration(
@@ -235,8 +245,9 @@ func RunAll(ctx context.Context, cfg *Config) {
 			)
 		}
 	}
+}
 
-	// Print status updates
+func printStatusUpdates(ctx context.Context, statusCh <-chan statusMsg) {
 	for {
 		select {
 		case <-ctx.Done():
