@@ -2,9 +2,22 @@ package redis
 
 import (
 	"context"
+	"math/rand"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 )
+
+// RandString generates a random alphanumeric string of given length
+func RandString(n int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	rand.Seed(time.Now().UnixNano())
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
 
 type ReadProbe struct {
 	Addr     string
@@ -62,7 +75,8 @@ func NewWriteProbe(addr, password string) *WriteProbe {
 }
 
 func (p *WriteProbe) Probe(ctx context.Context) error {
-	err := p.client.Set(ctx, "probe_key", "ok", 0).Err()
+	key := "probe_key_" + RandString(12)
+	err := p.client.Set(ctx, key, "ok", 30*time.Second).Err()
 	if err != nil {
 		// Try to reconnect once
 		p.client.Close()
@@ -71,7 +85,7 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 			Password: p.Password,
 			DB:       0,
 		})
-		err = p.client.Set(ctx, "probe_key", "ok", 0).Err()
+		err = p.client.Set(ctx, key, "ok", 30*time.Second).Err()
 	}
 	return err
 }

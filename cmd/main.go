@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -13,8 +12,8 @@ import (
 
 func main() {
 	configPath := "config.yaml"
-	if len(os.Args) < 1 {
-		fmt.Println("Usage: prober <config.yaml>")
+	if len(os.Args) <= 1 {
+		log.Println("Usage: prober <config.yaml>")
 		configPath = "../config.yaml"
 	}
 
@@ -33,7 +32,7 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		fmt.Printf("Received signal: %v, shutting down...\n", sig)
+		log.Printf("Received signal: %v, shutting down...\n", sig)
 		cancel()
 	}()
 

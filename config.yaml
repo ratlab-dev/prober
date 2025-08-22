@@ -1,4 +1,5 @@
 # S3 (MinIO) probe config
+defaultDuration: 10s
 s3:
   defaultDuration: 2s
   clusters:
@@ -9,20 +10,12 @@ s3:
       secretKey: minioadmin
       bucket: test-s3-bucket
       useSSL: false
-      duration: 5s
+      duration: 500ms
+      timeout: 200ms
       tasks:
         read: true
         write: true
       # The probe will use the object key "probe-test-file" for read/write
-
-# Global default duration for all probes (Go duration string, e.g. 10s, 500ms)
-defaultDuration: 10s
-
-# Per-type default duration (overrides global default for that type)
-redisDefaultDuration: 15s
-redisClusterDefaultDuration: 20s
-# mysqlDefaultDuration: 30s
-# kafkaDefaultDuration: 25s
 
 # Example for mysql (single node, read+write)
 mysql:
@@ -33,6 +26,8 @@ mysql:
       password: testpass
       database: testdb
       duration: 5s
+      read_query: "SELECT 1"
+      write_query: "SELECT 1"
       read_hosts:
         - 127.0.0.1:3306
       write_hosts:

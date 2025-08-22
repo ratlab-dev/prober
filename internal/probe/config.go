@@ -9,13 +9,13 @@ import (
 
 type DurationString string
 
-func (d DurationString) ToDuration(def time.Duration) time.Duration {
+func (d DurationString) ToDuration(defaultDuration time.Duration) time.Duration {
 	if d == "" {
-		return def
+		return defaultDuration
 	}
 	dur, err := time.ParseDuration(string(d))
 	if err != nil {
-		return def
+		return defaultDuration
 	}
 	return dur
 }
@@ -32,6 +32,7 @@ type Config struct {
 			Bucket    string         `yaml:"bucket"`
 			UseSSL    bool           `yaml:"useSSL"`
 			Duration  DurationString `yaml:"duration"`
+			Timeout   DurationString `yaml:"timeout"`
 			Tasks     struct {
 				Read  bool `yaml:"read"`
 				Write bool `yaml:"write"`
@@ -51,6 +52,8 @@ type Config struct {
 			Password   string         `yaml:"password"`
 			Database   string         `yaml:"database"`
 			Duration   DurationString `yaml:"duration"`
+			ReadQuery  string         `yaml:"read_query"`
+			WriteQuery string         `yaml:"write_query"`
 			Tasks      struct {
 				Read  bool `yaml:"read"`
 				Write bool `yaml:"write"`

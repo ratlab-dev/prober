@@ -3,8 +3,11 @@ package s3
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
+	"fmt"
 	"io"
+	"math/rand"
+	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -19,12 +22,13 @@ type WriteProbe struct {
 	SecretKey string
 	Bucket    string
 	UseSSL    bool
-	ObjectKey string // e.g. "probe-test-file"
+	ObjectKey string        // e.g. "probe-test-file" (used for read probe only)
+	Timeout   time.Duration // Timeout in seconds for S3 operations
 	client    *s3.Client
 }
 
 // NewWriteProbe creates a WriteProbe with a persistent S3 client
-func NewWriteProbe(endpoint, region, accessKey, secretKey, bucket, objectKey string, useSSL bool) *WriteProbe {
+func NewWriteProbe(endpoint, region, accessKey, secretKey, bucket, objectKey string, useSSL bool, timeout time.Duration) *WriteProbe {
 	return &WriteProbe{
 		Endpoint:  endpoint,
 		Region:    region,
@@ -33,6 +37,7 @@ func NewWriteProbe(endpoint, region, accessKey, secretKey, bucket, objectKey str
 		Bucket:    bucket,
 		UseSSL:    useSSL,
 		ObjectKey: objectKey,
+		Timeout:   timeout,
 	}
 }
 
@@ -50,43 +55,38 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		httpClient := &http.Client{
+			Timeout: p.Timeout,
+		}
 		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+			o.RetryMaxAttempts = 1
 			o.UsePathStyle = true
+			o.HTTPClient = httpClient
 		})
 	}
 	buf := make([]byte, 100)
 	if _, err := rand.Read(buf); err != nil {
 		return err
 	}
+	key := fmt.Sprintf("probe_file_%s", RandString(12))
 	_, err := p.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: &p.Bucket,
-		Key:    &p.ObjectKey,
-		Body:   bytes.NewReader(buf),
+		Bucket:  &p.Bucket,
+		Key:     &key,
+		Body:    bytes.NewReader(buf),
+		Expires: aws.Time(time.Now().Add(30 * time.Minute)),
 	})
-	if err != nil {
-		// Try to recover by recreating the client once
-		cfg, cfgErr := config.LoadDefaultConfig(ctx,
-			config.WithRegion(p.Region),
-			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(p.AccessKey, p.SecretKey, "")),
-			config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-				func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-					return aws.Endpoint{URL: p.Endpoint, HostnameImmutable: true, SigningRegion: p.Region}, nil
-				},
-			)),
-		)
-		if cfgErr != nil {
-			return err // return original error if recovery fails
-		}
-		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
-			o.UsePathStyle = true
-		})
-		_, err = p.client.PutObject(ctx, &s3.PutObjectInput{
-			Bucket: &p.Bucket,
-			Key:    &p.ObjectKey,
-			Body:   bytes.NewReader(buf),
-		})
-	}
 	return err
+}
+
+// RandString generates a random alphanumeric string of given length
+func RandString(n int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	rand.Seed(time.Now().UnixNano())
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
 
 type ReadProbe struct {
@@ -96,12 +96,13 @@ type ReadProbe struct {
 	SecretKey string
 	Bucket    string
 	UseSSL    bool
-	ObjectKey string // e.g. "probe-test-file"
+	ObjectKey string        // e.g. "probe-test-file"
+	Timeout   time.Duration // Timeout in seconds for S3 operations
 	client    *s3.Client
 }
 
 // NewReadProbe creates a ReadProbe with a persistent S3 client
-func NewReadProbe(endpoint, region, accessKey, secretKey, bucket, objectKey string, useSSL bool) *ReadProbe {
+func NewReadProbe(endpoint, region, accessKey, secretKey, bucket, objectKey string, useSSL bool, timeout time.Duration) *ReadProbe {
 	return &ReadProbe{
 		Endpoint:  endpoint,
 		Region:    region,
@@ -110,6 +111,7 @@ func NewReadProbe(endpoint, region, accessKey, secretKey, bucket, objectKey stri
 		Bucket:    bucket,
 		UseSSL:    useSSL,
 		ObjectKey: objectKey,
+		Timeout:   timeout,
 	}
 }
 
@@ -127,8 +129,13 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		httpClient := &http.Client{
+			Timeout: time.Duration(p.Timeout) * time.Second,
+		}
 		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
 			o.UsePathStyle = true
+			o.HTTPClient = httpClient
+			o.RetryMaxAttempts = 1
 		})
 	}
 	out, err := p.client.GetObject(ctx, &s3.GetObjectInput{
@@ -149,8 +156,12 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 		if cfgErr != nil {
 			return err // return original error if recovery fails
 		}
+		httpClient := &http.Client{
+			Timeout: time.Duration(p.Timeout) * time.Second,
+		}
 		p.client = s3.NewFromConfig(cfg, func(o *s3.Options) {
 			o.UsePathStyle = true
+			o.HTTPClient = httpClient
 		})
 		out, err = p.client.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: &p.Bucket,

@@ -2,7 +2,6 @@ package probe
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -80,6 +79,7 @@ func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 				cluster.Bucket,
 				objectKey,
 				cluster.UseSSL,
+				cluster.Timeout.ToDuration(time.Second),
 			)
 			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3-WRITE", probe, statusCh,
 				func() { IncProbeSuccess("s3", "write", cluster.Endpoint, cluster.Name) },
@@ -87,15 +87,16 @@ func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 			)
 		}
 		if cluster.Tasks.Read {
-			probe := &s3.ReadProbe{
-				Endpoint:  cluster.Endpoint,
-				Region:    cluster.Region,
-				AccessKey: cluster.AccessKey,
-				SecretKey: cluster.SecretKey,
-				Bucket:    cluster.Bucket,
-				UseSSL:    cluster.UseSSL,
-				ObjectKey: objectKey,
-			}
+			probe := s3.NewReadProbe(
+				cluster.Endpoint,
+				cluster.Region,
+				cluster.AccessKey,
+				cluster.SecretKey,
+				cluster.Bucket,
+				objectKey,
+				cluster.UseSSL,
+				cluster.Timeout.ToDuration(time.Second),
+			)
 			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3-READ", probe, statusCh,
 				func() { IncProbeSuccess("s3", "read", cluster.Endpoint, cluster.Name) },
 				func() { IncProbeFailure("s3", "read", "", cluster.Endpoint) },
@@ -117,7 +118,7 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		}
 		if len(cluster.ReadHosts) > 0 && cluster.Tasks.Read {
 			for _, host := range cluster.ReadHosts {
-				probe, err := mysqlprobe.NewReadProbe(host, cluster.User, cluster.Password, cluster.Database)
+				probe, err := mysqlprobe.NewReadProbe(host, cluster.User, cluster.Password, cluster.Database, cluster.ReadQuery)
 				if err != nil {
 					log.Printf("culd not create mysql probe for cluster: %s, host: %s, err: %v", cluster.Name, host, err)
 					continue
@@ -130,7 +131,7 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		}
 		if len(cluster.WriteHosts) > 0 && cluster.Tasks.Write {
 			for _, host := range cluster.WriteHosts {
-				probe, err := mysqlprobe.NewWriteProbe(host, cluster.User, cluster.Password, cluster.Database)
+				probe, err := mysqlprobe.NewWriteProbe(host, cluster.User, cluster.Password, cluster.Database, cluster.WriteQuery)
 				if err != nil {
 					log.Printf("culd not create mysql probe for cluster: %s, host: %s, err: %v", cluster.Name, host, err)
 					continue
@@ -217,18 +218,22 @@ func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg
 			ms = 100
 		}
 		if cluster.Tasks.Read {
-			probe := redisprobe.NewClusterReadProbe(cluster.Nodes, cluster.Password)
-			launchProbeWithDuration(ctx, ms, cluster.Name, "", "RedisCluster-READ", probe, statusCh,
-				func() { IncProbeSuccess("redisCluster", "read", "", cluster.Name) },
-				func() { IncProbeFailure("redisCluster", "read", "", cluster.Name) },
-			)
+			for _, node := range cluster.Nodes {
+				probe := redisprobe.NewClusterReadProbe([]string{node}, cluster.Password)
+				launchProbeWithDuration(ctx, ms, cluster.Name, node, "RedisCluster-READ", probe, statusCh,
+					func() { IncProbeSuccess("redisCluster", "read", node, cluster.Name) },
+					func() { IncProbeFailure("redisCluster", "read", node, cluster.Name) },
+				)
+			}
 		}
 		if cluster.Tasks.Write {
-			probe := redisprobe.NewClusterWriteProbe(cluster.Nodes, cluster.Password)
-			launchProbeWithDuration(ctx, ms, cluster.Name, "", "RedisCluster-WRITE", probe, statusCh,
-				func() { IncProbeSuccess("redisCluster", "write", "", cluster.Name) },
-				func() { IncProbeFailure("redisCluster", "write", "", cluster.Name) },
-			)
+			for _, node := range cluster.Nodes {
+				probe := redisprobe.NewClusterWriteProbe([]string{node}, cluster.Password)
+				launchProbeWithDuration(ctx, ms, cluster.Name, node, "RedisCluster-WRITE", probe, statusCh,
+					func() { IncProbeSuccess("redisCluster", "write", node, cluster.Name) },
+					func() { IncProbeFailure("redisCluster", "write", node, cluster.Name) },
+				)
+			}
 		}
 	}
 }
@@ -237,20 +242,20 @@ func printStatusUpdates(ctx context.Context, statusCh <-chan statusMsg) {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Probing stopped.")
+			log.Println("Probing stopped.")
 			return
 		case msg := <-statusCh:
 			if msg.Status == "OK" {
 				if msg.Host != "" {
-					fmt.Printf("[%s][%s][%s] OK\n", msg.TargetType, msg.Cluster, msg.Host)
+					log.Printf("[%s][%s][%s] OK\n", msg.TargetType, msg.Cluster, msg.Host)
 				} else {
-					fmt.Printf("[%s][%s] OK\n", msg.TargetType, msg.Cluster)
+					log.Printf("[%s][%s] OK\n", msg.TargetType, msg.Cluster)
 				}
 			} else {
 				if msg.Host != "" {
-					fmt.Printf("[%s][%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Host, msg.Err)
+					log.Printf("[%s][%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Host, msg.Err)
 				} else {
-					fmt.Printf("[%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Err)
+					log.Printf("[%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Err)
 				}
 			}
 		}

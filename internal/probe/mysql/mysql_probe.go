@@ -8,34 +8,37 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// NewReadProbe creates a ReadProbe and initializes the DB connection
-func NewReadProbe(host, user, password, database string) (*ReadProbe, error) {
-	return &ReadProbe{
-		Host:     host,
-		User:     user,
-		Password: password,
-		Database: database,
-		DB:       nil,
-	}, nil
-}
-
-// NewWriteProbe creates a WriteProbe and initializes the DB connection
-func NewWriteProbe(host, user, password, database string) (*WriteProbe, error) {
-	return &WriteProbe{
-		Host:     host,
-		User:     user,
-		Password: password,
-		Database: database,
-		DB:       nil,
-	}, nil
-}
-
 type ReadProbe struct {
 	Host     string
 	User     string
 	Password string
 	Database string
+	Query    string
 	DB       *sql.DB
+}
+
+// NewReadProbe creates a ReadProbe and initializes the DB connection
+func NewReadProbe(host, user, password, database, query string) (*ReadProbe, error) {
+	return &ReadProbe{
+		Host:     host,
+		User:     user,
+		Password: password,
+		Database: database,
+		Query:    query,
+		DB:       nil,
+	}, nil
+}
+
+// NewWriteProbe creates a WriteProbe and initializes the DB connection
+func NewWriteProbe(host, user, password, database, query string) (*WriteProbe, error) {
+	return &WriteProbe{
+		Host:     host,
+		User:     user,
+		Password: password,
+		Database: database,
+		Query:    query,
+		DB:       nil,
+	}, nil
 }
 
 func (p *ReadProbe) Probe(ctx context.Context) error {
@@ -52,12 +55,16 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 		p.DB = db
 	}
 	var one int
-	err := p.DB.QueryRowContext(ctx, "SELECT 1").Scan(&one)
+	query := p.Query
+	if query == "" {
+		query = "SELECT 1"
+	}
+	err := p.DB.QueryRowContext(ctx, query).Scan(&one)
 	if err != nil {
 		return err
 	}
 	if one != 1 {
-		return fmt.Errorf("unexpected result from SELECT 1: %d", one)
+		return fmt.Errorf("unexpected result from query: %d", one)
 	}
 	return nil
 }
@@ -67,6 +74,7 @@ type WriteProbe struct {
 	User     string
 	Password string
 	Database string
+	Query    string
 	DB       *sql.DB
 }
 
@@ -83,27 +91,17 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 		}
 		p.DB = db
 	}
-
-	// Ensure probe_test table exists
-	_, err := p.DB.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS probe_test (id INT PRIMARY KEY AUTO_INCREMENT, val VARCHAR(32))`)
-	if err != nil {
-		return fmt.Errorf("failed to create probe_test table: %w", err)
+	var one int
+	query := p.Query
+	if query == "" {
+		query = "SELECT 1"
 	}
-
-	// Insert a test row
-	res, err := p.DB.ExecContext(ctx, `INSERT INTO probe_test (val) VALUES ('probe')`)
+	err := p.DB.QueryRowContext(ctx, query).Scan(&one)
 	if err != nil {
-		return fmt.Errorf("failed to insert test row: %w", err)
+		return err
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("failed to get last insert id: %w", err)
-	}
-
-	// Delete the test row
-	_, err = p.DB.ExecContext(ctx, `DELETE FROM probe_test WHERE id = ?`, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete test row: %w", err)
+	if one != 1 {
+		return fmt.Errorf("unexpected result from query: %d", one)
 	}
 	return nil
 }

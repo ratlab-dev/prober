@@ -2,8 +2,8 @@ package redis
 
 import (
 	"context"
-
 	"github.com/go-redis/redis/v8"
+	"time"
 )
 
 type ClusterReadProbe struct {
@@ -59,7 +59,8 @@ func NewClusterWriteProbe(addrs []string, password string) *ClusterWriteProbe {
 }
 
 func (p *ClusterWriteProbe) Probe(ctx context.Context) error {
-	err := p.client.Set(ctx, "probe_key", "ok", 0).Err()
+	key := "probe_key_" + RandString(12)
+	err := p.client.Set(ctx, key, "ok", 30*time.Second).Err()
 	if err != nil {
 		// Try to reconnect once
 		p.client.Close()
@@ -67,7 +68,7 @@ func (p *ClusterWriteProbe) Probe(ctx context.Context) error {
 			Addrs:    p.Addrs,
 			Password: p.Password,
 		})
-		err = p.client.Set(ctx, "probe_key", "ok", 0).Err()
+		err = p.client.Set(ctx, key, "ok", 30*time.Second).Err()
 	}
 	return err
 }
