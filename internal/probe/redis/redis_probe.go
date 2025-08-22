@@ -2,7 +2,9 @@ package redis
 
 import (
 	"context"
+	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -76,6 +78,9 @@ func NewWriteProbe(addr, password string) *WriteProbe {
 
 func (p *WriteProbe) Probe(ctx context.Context) error {
 	key := "probe_key_" + RandString(12)
+	if os.Getenv("DEBUG") == "1" {
+		log.Printf("[DEBUG][Redis][%s] Writing key: %s", p.Addr, key)
+	}
 	err := p.client.Set(ctx, key, "ok", 30*time.Second).Err()
 	if err != nil {
 		// Try to reconnect once

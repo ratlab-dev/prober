@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -42,6 +44,9 @@ func NewWriteProbe(host, user, password, database, query string) (*WriteProbe, e
 }
 
 func (p *ReadProbe) Probe(ctx context.Context) error {
+	if os.Getenv("DEBUG") == "1" {
+		log.Printf("[DEBUG][MySQL][%s] Executing query: %s", p.Host, p.Query)
+	}
 	if p.Host == "" || p.User == "" || p.Database == "" {
 		// Noop if config is incomplete
 		return nil
@@ -79,6 +84,9 @@ type WriteProbe struct {
 }
 
 func (p *WriteProbe) Probe(ctx context.Context) error {
+	if os.Getenv("DEBUG") == "1" {
+		log.Printf("[DEBUG][MySQL][%s] Executing query: %s", p.Host, p.Query)
+	}
 	if p.Host == "" || p.User == "" || p.Database == "" {
 		// Noop if config is incomplete
 		return nil

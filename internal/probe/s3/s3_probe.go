@@ -5,8 +5,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -42,6 +44,10 @@ func NewWriteProbe(endpoint, region, accessKey, secretKey, bucket, objectKey str
 }
 
 func (p *WriteProbe) Probe(ctx context.Context) error {
+	key := fmt.Sprintf("probe_file_%s", RandString(12))
+	if os.Getenv("DEBUG") == "1" {
+		log.Printf("[DEBUG][S3][%s] Writing key: %s", p.Bucket, key)
+	}
 	if p.client == nil {
 		cfg, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(p.Region),
@@ -68,7 +74,6 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 	if _, err := rand.Read(buf); err != nil {
 		return err
 	}
-	key := fmt.Sprintf("probe_file_%s", RandString(12))
 	_, err := p.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:  &p.Bucket,
 		Key:     &key,
