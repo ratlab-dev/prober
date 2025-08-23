@@ -3,6 +3,7 @@ package probe
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	kafkaprobe "github.com/yourorg/prober/internal/probe/kafka"
@@ -217,24 +218,11 @@ func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg
 		if ms < 100 {
 			ms = 100
 		}
-		if cluster.Tasks.Read {
-			for _, node := range cluster.Nodes {
-				probe := redisprobe.NewClusterReadProbe([]string{node}, cluster.Password)
-				launchProbeWithDuration(ctx, ms, cluster.Name, node, "RedisCluster-READ", probe, statusCh,
-					func() { IncProbeSuccess("redisCluster", "read", node, cluster.Name) },
-					func() { IncProbeFailure("redisCluster", "read", node, cluster.Name) },
-				)
-			}
-		}
-		if cluster.Tasks.Write {
-			for _, node := range cluster.Nodes {
-				probe := redisprobe.NewClusterWriteProbe([]string{node}, cluster.Password)
-				launchProbeWithDuration(ctx, ms, cluster.Name, node, "RedisCluster-WRITE", probe, statusCh,
-					func() { IncProbeSuccess("redisCluster", "write", node, cluster.Name) },
-					func() { IncProbeFailure("redisCluster", "write", node, cluster.Name) },
-				)
-			}
-		}
+		probe := redisprobe.NewClusterProbe(cluster.Nodes, cluster.Password)
+		launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Nodes, ","), "RedisCluster-READWRITE", probe, statusCh,
+			func() { IncProbeSuccess("redisCluster", "read", strings.Join(cluster.Nodes, ","), cluster.Name) },
+			func() { IncProbeFailure("redisCluster", "read", strings.Join(cluster.Nodes, ","), cluster.Name) },
+		)
 	}
 }
 

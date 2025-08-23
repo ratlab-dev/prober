@@ -2,79 +2,39 @@ package redis
 
 import (
 	"context"
-	"log"
-	"os"
-	"time"
-
 	"github.com/redis/go-redis/v9"
 )
 
-type ClusterReadProbe struct {
+type ClusterProbe struct {
 	Addrs    []string
 	Password string
-	client   *redis.ClusterClient
 }
 
-// NewClusterReadProbe creates a ClusterReadProbe with a persistent client
-func NewClusterReadProbe(addrs []string, password string) *ClusterReadProbe {
+// NewClusterProbe creates a ClusterProbe
+func NewClusterProbe(addrs []string, password string) *ClusterProbe {
+	return &ClusterProbe{
+		Addrs:    addrs,
+		Password: password,
+	}
+}
+
+func (p *ClusterProbe) Probe(ctx context.Context) error {
 	client := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:    addrs,
-		Password: password,
+		Addrs:    p.Addrs,
+		Password: p.Password,
 	})
-	return &ClusterReadProbe{
-		Addrs:    addrs,
-		Password: password,
-		client:   client,
-	}
-}
+	defer client.Close()
 
-func (p *ClusterReadProbe) Probe(ctx context.Context) error {
-	_, err := p.client.Ping(ctx).Result()
-	if err != nil {
-		// Try to reconnect once
-		p.client.Close()
-		p.client = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    p.Addrs,
-			Password: p.Password,
-		})
-		_, err = p.client.Ping(ctx).Result()
-	}
-	return err
-}
-
-type ClusterWriteProbe struct {
-	Addrs    []string
-	Password string
-	client   *redis.ClusterClient
-}
-
-// NewClusterWriteProbe creates a ClusterWriteProbe with a persistent client
-func NewClusterWriteProbe(addrs []string, password string) *ClusterWriteProbe {
-	client := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:    addrs,
-		Password: password,
+	var lastErr error
+	err := client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_, err := c.Ping(ctx).Result()
+		if err != nil {
+			lastErr = err
+		}
+		return nil
 	})
-	return &ClusterWriteProbe{
-		Addrs:    addrs,
-		Password: password,
-		client:   client,
-	}
-}
-
-func (p *ClusterWriteProbe) Probe(ctx context.Context) error {
-	key := "probe_key_" + RandString(12)
-	if os.Getenv("DEBUG") == "1" {
-		log.Printf("[DEBUG][RedisCluster][%v] Writing key: %s", p.Addrs, key)
-	}
-	err := p.client.Set(ctx, key, "ok", 30*time.Second).Err()
 	if err != nil {
-		// Try to reconnect once
-		p.client.Close()
-		p.client = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    p.Addrs,
-			Password: p.Password,
-		})
-		err = p.client.Set(ctx, key, "ok", 30*time.Second).Err()
+		return err
 	}
-	return err
+	return lastErr
 }

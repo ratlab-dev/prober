@@ -89,10 +89,6 @@ type Config struct {
 			Nodes    []string       `yaml:"nodes"`
 			Password string         `yaml:"password"`
 			Duration DurationString `yaml:"duration"`
-			Tasks    struct {
-				Read  bool `yaml:"read"`
-				Write bool `yaml:"write"`
-			} `yaml:"tasks"`
 		} `yaml:"clusters"`
 	} `yaml:"redisCluster"`
 }
