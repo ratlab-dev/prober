@@ -1,54 +1,54 @@
 # S3 (MinIO) probe config
 defaultDuration: 10s
-s3:
-  defaultDuration: 2s
-  clusters:
-    - name: minio-test
-      endpoint: http://127.0.0.1:9000
-      region: us-east-1
-      accessKey: minioadmin
-      secretKey: minioadmin
-      bucket: test-s3-bucket
-      useSSL: false
-      duration: 500ms
-      timeout: 200ms
-      tasks:
-        read: true
-        write: true
-      # The probe will use the object key "probe-test-file" for read/write
+# s3:
+#   defaultDuration: 2s
+#   clusters:
+#     - name: minio-test
+#       endpoint: http://127.0.0.1:9000
+#       region: us-east-1
+#       accessKey: minioadmin
+#       secretKey: minioadmin
+#       bucket: test-s3-bucket
+#       useSSL: false
+#       duration: 500ms
+#       timeout: 200ms
+#       tasks:
+#         read: true
+#         write: true
+#       # The probe will use the object key "probe-test-file" for read/write
 
-# Example for mysql (single node, read+write)
-mysql:
-  defaultDuration: 2s  # optional, overrides global and per-type for mysql
-  clusters:
-    - name: main-mysql
-      user: testuser
-      password: testpass
-      database: testdb
-      duration: 5s
-      read_query: "SELECT 1"
-      write_query: "SELECT 1"
-      read_hosts:
-        - 127.0.0.1:3306
-      write_hosts:
-        - 127.0.0.1:3306
-      tasks:
-        read: true
-        write: true
+# # Example for mysql (single node, read+write)
+# mysql:
+#   defaultDuration: 2s  # optional, overrides global and per-type for mysql
+#   clusters:
+#     - name: main-mysql
+#       user: testuser
+#       password: testpass
+#       database: testdb
+#       duration: 5s
+#       read_query: "SELECT 1"
+#       write_query: "SELECT 1"
+#       read_hosts:
+#         - 127.0.0.1:3306
+#       write_hosts:
+#         - 127.0.0.1:3306
+#       tasks:
+#         read: true
+#         write: true
 
 
-# Example for redis (single node)
-redis:
-  defaultDuration: 5s  # optional, overrides global and per-type for redis
-  clusters:
-    - name: main-redis
-      nodes:
-        - 127.0.0.1:6379
-      password: ""
-      duration: 5s     # optional, overrides all above for this cluster
-      tasks:
-        read: true
-        write: true
+# # Example for redis (single node)
+# redis:
+#   defaultDuration: 5s  # optional, overrides global and per-type for redis
+#   clusters:
+#     - name: main-redis
+#       nodes:
+#         - 127.0.0.1:6379
+#       password: ""
+#       duration: 5s     # optional, overrides all above for this cluster
+#       tasks:
+#         read: true
+#         write: true
 
 redisCluster:
   defaultDuration: 18s  # optional, overrides global and per-type for redisCluster

@@ -56,11 +56,13 @@ services:
       - "7002:7002"
       - "7003:7003"
     volumes:
-      - /tmp:/data
+      - /tmp/redis-7001:/data/7001
+      - /tmp/redis-7002:/data/7002
+      - /tmp/redis-7003:/data/7003
     command: ["sh", "-c",
-      "redis-server --port 7001 --cluster-enabled yes --cluster-config-file nodes-7001.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7001 --cluster-preferred-endpoint-type ip & \
-       redis-server --port 7002 --cluster-enabled yes --cluster-config-file nodes-7002.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7002 --cluster-preferred-endpoint-type ip & \
-       redis-server --port 7003 --cluster-enabled yes --cluster-config-file nodes-7003.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7003 --cluster-preferred-endpoint-type ip && \
+      "redis-server --port 7001 --cluster-enabled yes --cluster-config-file nodes-7001.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7001 --cluster-preferred-endpoint-type ip --dir /data/7001 & \
+       redis-server --port 7002 --cluster-enabled yes --cluster-config-file nodes-7002.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7002 --cluster-preferred-endpoint-type ip --dir /data/7002 & \
+       redis-server --port 7003 --cluster-enabled yes --cluster-config-file nodes-7003.conf --cluster-node-timeout 5000 --appendonly no --cluster-announce-ip 127.0.0.1 --cluster-announce-port 7003 --cluster-preferred-endpoint-type ip --dir /data/7003 && \
        wait"
     ]
 
