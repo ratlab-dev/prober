@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -77,6 +78,10 @@ func (p *HTTPProbe) Probe(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (p *HTTPProbe) MetadataString() string {
+	return fmt.Sprintf("HTTPProbe | Endpoint: %s | Method: %s | Proxy: %s", p.Endpoint, p.Method, p.ProxyURL)
 }
 
 type HTTPStatusError struct {

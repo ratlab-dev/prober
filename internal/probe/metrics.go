@@ -13,14 +13,14 @@ var (
 			Name: "prober_success_total",
 			Help: "Total successful probe operations",
 		},
-		[]string{"target_type", "operation_type", "target_ip", "target_name"},
+		[]string{"target_type", "operation_type", "target_host", "target_name"},
 	)
 	failureCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "prober_failure_total",
 			Help: "Total failed probe operations",
 		},
-		[]string{"target_type", "operation_type", "target_ip", "target_name"},
+		[]string{"target_type", "operation_type", "target_host", "target_name"},
 	)
 )
 
@@ -35,10 +35,10 @@ func InitMetrics() {
 	}()
 }
 
-func IncProbeSuccess(targetType, opType, ip, name string) {
-	successCounter.WithLabelValues(targetType, opType, ip, name).Inc()
+func IncProbeSuccess(targetType, opType, targetHost, name string) {
+	successCounter.WithLabelValues(targetType, opType, targetHost, name).Inc()
 }
 
-func IncProbeFailure(targetType, opType, ip, name string) {
-	failureCounter.WithLabelValues(targetType, opType, ip, name).Inc()
+func IncProbeFailure(targetType, opType, targetHost, name string) {
+	failureCounter.WithLabelValues(targetType, opType, targetHost, name).Inc()
 }

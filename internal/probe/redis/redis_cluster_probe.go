@@ -2,6 +2,8 @@ package redis
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -37,4 +39,8 @@ func (p *ClusterProbe) Probe(ctx context.Context) error {
 		return err
 	}
 	return lastErr
+}
+
+func (p *ClusterProbe) MetadataString() string {
+	return fmt.Sprintf("RedisClusterProbe | Nodes: %v", p.Addrs)
 }

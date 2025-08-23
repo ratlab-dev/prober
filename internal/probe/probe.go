@@ -19,19 +19,7 @@ type statusMsg struct {
 	Host       string
 	Status     string
 	Err        error
-}
-
-func RunAll(ctx context.Context, cfg *Config) {
-	statusCh := make(chan statusMsg, 100)
-
-	RunS3(ctx, cfg, statusCh)
-	RunMySQL(ctx, cfg, statusCh)
-	RunKafka(ctx, cfg, statusCh)
-	RunRedis(ctx, cfg, statusCh)
-	RunRedisCluster(ctx, cfg, statusCh)
-	RunHTTP(ctx, cfg, statusCh)
-
-	printStatusUpdates(ctx, statusCh)
+	Details    string
 }
 
 func launchProbeWithDuration(ctx context.Context, ms int, clusterName, host, targetType string, probe Prober, statusCh chan<- statusMsg, onSuccess, onFailure func()) {
@@ -57,6 +45,7 @@ func launchProbeWithDuration(ctx context.Context, ms int, clusterName, host, tar
 				Host:       host,
 				Status:     status,
 				Err:        err,
+				Details:    probe.MetadataString(),
 			}
 		}
 	}()
@@ -253,30 +242,6 @@ func RunHTTP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 			func() { IncProbeSuccess("http", "probe", cluster.Endpoint, cluster.Name) },
 			func() { IncProbeFailure("http", "probe", cluster.Endpoint, cluster.Name) },
 		)
-	}
-}
-
-func printStatusUpdates(ctx context.Context, statusCh <-chan statusMsg) {
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Probing stopped.")
-			return
-		case msg := <-statusCh:
-			if msg.Status == "OK" {
-				if msg.Host != "" {
-					log.Printf("[%s][%s][%s] OK\n", msg.TargetType, msg.Cluster, msg.Host)
-				} else {
-					log.Printf("[%s][%s] OK\n", msg.TargetType, msg.Cluster)
-				}
-			} else {
-				if msg.Host != "" {
-					log.Printf("[%s][%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Host, msg.Err)
-				} else {
-					log.Printf("[%s][%s] ERROR: %v\n", msg.TargetType, msg.Cluster, msg.Err)
-				}
-			}
-		}
 	}
 }
 

@@ -180,3 +180,11 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 	_, err = io.ReadAll(out.Body)
 	return err
 }
+
+func (p *ReadProbe) MetadataString() string {
+	return fmt.Sprintf("S3ReadProbe | Endpoint: %s | Bucket: %s | Region: %s", p.Endpoint, p.Bucket, p.Region)
+}
+
+func (p *WriteProbe) MetadataString() string {
+	return fmt.Sprintf("S3WriteProbe | Endpoint: %s | Bucket: %s | Region: %s", p.Endpoint, p.Bucket, p.Region)
+}

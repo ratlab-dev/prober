@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -56,6 +57,10 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 	return err
 }
 
+func (p *ReadProbe) MetadataString() string {
+	return fmt.Sprintf("RedisReadProbe | Node: %s", p.Addr)
+}
+
 type WriteProbe struct {
 	Addr     string
 	Password string
@@ -93,4 +98,8 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 		err = p.client.Set(ctx, key, "ok", 30*time.Second).Err()
 	}
 	return err
+}
+
+func (p *WriteProbe) MetadataString() string {
+	return fmt.Sprintf("RedisWriteProbe | Node: %s", p.Addr)
 }

@@ -74,6 +74,10 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 	return nil
 }
 
+func (p *ReadProbe) MetadataString() string {
+	return fmt.Sprintf("MySQLReadProbe | Host: %s | Database: %s | User: %s", p.Host, p.Database, p.User)
+}
+
 type WriteProbe struct {
 	Host     string
 	User     string
@@ -112,4 +116,8 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 		return fmt.Errorf("unexpected result from query: %d", one)
 	}
 	return nil
+}
+
+func (p *WriteProbe) MetadataString() string {
+	return fmt.Sprintf("MySQLWriteProbe | Host: %s | Database: %s | User: %s", p.Host, p.Database, p.User)
 }
