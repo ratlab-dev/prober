@@ -1,5 +1,13 @@
 
+
 services:
+  tinyproxy:
+    image: vimagick/tinyproxy
+    container_name: tinyproxy
+    ports:
+      - "8888:8888"
+    environment:
+      - TZ=UTC
   mysql:
     image: mysql:8.0
     container_name: mysql

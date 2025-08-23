@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	httpprobe "github.com/yourorg/prober/internal/probe/http"
 	kafkaprobe "github.com/yourorg/prober/internal/probe/kafka"
 	mysqlprobe "github.com/yourorg/prober/internal/probe/mysql"
 	redisprobe "github.com/yourorg/prober/internal/probe/redis"
@@ -28,6 +29,7 @@ func RunAll(ctx context.Context, cfg *Config) {
 	RunKafka(ctx, cfg, statusCh)
 	RunRedis(ctx, cfg, statusCh)
 	RunRedisCluster(ctx, cfg, statusCh)
+	RunHTTP(ctx, cfg, statusCh)
 
 	printStatusUpdates(ctx, statusCh)
 }
@@ -222,6 +224,34 @@ func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg
 		launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Nodes, ","), "RedisCluster-READWRITE", probe, statusCh,
 			func() { IncProbeSuccess("redisCluster", "read", strings.Join(cluster.Nodes, ","), cluster.Name) },
 			func() { IncProbeFailure("redisCluster", "read", strings.Join(cluster.Nodes, ","), cluster.Name) },
+		)
+	}
+}
+
+func RunHTTP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	for _, cluster := range cfg.HTTP.Clusters {
+		dur := cluster.Duration.ToDuration(
+			cfg.HTTP.DefaultDuration.ToDuration(
+				cfg.DefaultDuration.ToDuration(10 * time.Second),
+			),
+		)
+		ms := int(dur.Milliseconds())
+		if ms < 100 {
+			ms = 100
+		}
+		probe := httpprobe.NewHTTPProbe(
+			cluster.Endpoint,
+			cluster.Method,
+			cluster.Body,
+			cluster.ProxyURL,
+			cluster.Headers,
+			cluster.UnacceptableStatusCodes,
+			cluster.Timeout.ToDuration(2*time.Second),
+			cluster.SkipTLSVerify,
+		)
+		launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "HTTP", probe, statusCh,
+			func() { IncProbeSuccess("http", "probe", cluster.Endpoint, cluster.Name) },
+			func() { IncProbeFailure("http", "probe", cluster.Endpoint, cluster.Name) },
 		)
 	}
 }

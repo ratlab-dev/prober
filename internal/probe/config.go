@@ -82,6 +82,21 @@ type Config struct {
 			} `yaml:"tasks"`
 		} `yaml:"clusters"`
 	} `yaml:"redis"`
+	HTTP struct {
+		DefaultDuration DurationString `yaml:"defaultDuration"`
+		Clusters        []struct {
+			Name                    string            `yaml:"name"`
+			Endpoint                string            `yaml:"endpoint"`
+			Method                  string            `yaml:"method"`
+			Body                    string            `yaml:"body"`
+			Headers                 map[string]string `yaml:"headers"`
+			ProxyURL                string            `yaml:"proxyURL"`
+			UnacceptableStatusCodes []int             `yaml:"unacceptableStatusCodes"`
+			Timeout                 DurationString    `yaml:"timeout"`
+			Duration                DurationString    `yaml:"duration"`
+			SkipTLSVerify           bool              `yaml:"skipTLSVerify"`
+		} `yaml:"clusters"`
+	} `yaml:"http"`
 	RedisCluster struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
 		Clusters        []struct {
