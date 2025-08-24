@@ -72,7 +72,7 @@ redisCluster:
       nodes:
         - 127.0.0.1:7001
         - 127.0.0.1:7002
-        - 127.0.0.1:7004
+        - 127.0.0.1:7003
       password: ""
       duration: 2s      # optional, overrides all above for this cluster
       tasks:

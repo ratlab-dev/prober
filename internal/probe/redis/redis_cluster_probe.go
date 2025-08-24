@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"fmt"
-
 	"github.com/redis/go-redis/v9"
 )
 
@@ -20,6 +19,15 @@ func NewClusterProbe(addrs []string, password string) *ClusterProbe {
 	}
 }
 
+type ShardError struct {
+	Addr string
+	Err  error
+}
+
+func (e ShardError) Error() string {
+	return fmt.Sprintf("Redis cluster shard %s error: %v", e.Addr, e.Err)
+}
+
 func (p *ClusterProbe) Probe(ctx context.Context) error {
 	client := redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:    p.Addrs,
@@ -27,18 +35,17 @@ func (p *ClusterProbe) Probe(ctx context.Context) error {
 	})
 	defer client.Close()
 
-	var lastErr error
-	err := client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
-		_, err := c.Ping(ctx).Result()
-		if err != nil {
-			lastErr = err
+	var firstErr *ShardError
+	_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		if _, err := c.Ping(ctx).Result(); err != nil && firstErr == nil {
+			firstErr = &ShardError{Addr: c.Options().Addr, Err: err}
 		}
 		return nil
 	})
-	if err != nil {
-		return err
+	if firstErr != nil {
+		return firstErr
 	}
-	return lastErr
+	return nil
 }
 
 func (p *ClusterProbe) MetadataString() string {
