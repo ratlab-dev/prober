@@ -3,10 +3,12 @@ package redis
 import (
 	"context"
 	"fmt"
+
 	"github.com/redis/go-redis/v9"
 )
 
 type ClusterProbe struct {
+	Region   string
 	Addrs    []string
 	Password string
 }
@@ -49,5 +51,5 @@ func (p *ClusterProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ClusterProbe) MetadataString() string {
-	return fmt.Sprintf("RedisClusterProbe | Nodes: %v", p.Addrs)
+	return fmt.Sprintf("Nodes: %v | Region: %s", p.Addrs, p.Region)
 }

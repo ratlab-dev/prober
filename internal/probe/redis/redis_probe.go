@@ -23,6 +23,7 @@ func RandString(n int) string {
 }
 
 type ReadProbe struct {
+	Region   string
 	Addr     string
 	Password string
 	client   *redis.Client
@@ -58,10 +59,11 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ReadProbe) MetadataString() string {
-	return fmt.Sprintf("RedisReadProbe | Node: %s", p.Addr)
+	return fmt.Sprintf("Node: %s | Region: %s", p.Addr, p.Region)
 }
 
 type WriteProbe struct {
+	Region   string
 	Addr     string
 	Password string
 	client   *redis.Client
@@ -101,5 +103,5 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 }
 
 func (p *WriteProbe) MetadataString() string {
-	return fmt.Sprintf("RedisWriteProbe | Node: %s", p.Addr)
+	return fmt.Sprintf("Node: %s | Region: %s", p.Addr, p.Region)
 }

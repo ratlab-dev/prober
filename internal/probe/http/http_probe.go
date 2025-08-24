@@ -12,6 +12,7 @@ import (
 )
 
 type HTTPProbe struct {
+	Region                  string
 	Endpoint                string
 	Method                  string
 	Body                    string
@@ -32,6 +33,7 @@ func NewHTTPProbe(endpoint, method, body, proxyURL string, headers map[string]st
 		UnacceptableStatusCodes: unacceptableStatusCodes,
 		Timeout:                 timeout,
 		SkipTLSVerify:           skipTLSVerify,
+		Region:                  "",
 	}
 }
 
@@ -81,7 +83,7 @@ func (p *HTTPProbe) Probe(ctx context.Context) error {
 }
 
 func (p *HTTPProbe) MetadataString() string {
-	return fmt.Sprintf("HTTPProbe | Endpoint: %s | Method: %s | Proxy: %s", p.Endpoint, p.Method, p.ProxyURL)
+	return fmt.Sprintf("Endpoint: %s | Method: %s | Proxy: %s | Region: %s", p.Endpoint, p.Method, p.ProxyURL, p.Region)
 }
 
 type HTTPStatusError struct {

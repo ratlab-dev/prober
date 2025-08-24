@@ -3,6 +3,7 @@ package probe
 import (
 	"context"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -17,7 +18,20 @@ import (
 // ...existing code...
 
 func RunTCP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	sourceRegion := os.Getenv("SOURCE_REGION")
+	if sourceRegion == "" {
+		sourceRegion = "local"
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		nodeName = "local"
+	}
 	for _, cluster := range cfg.TCP.Clusters {
+		if cluster.Region == "" {
+			log.Printf("ERROR: region missing for TCP cluster %s (source region: %s)", cluster.Name, sourceRegion)
+		} else {
+			log.Printf("Probing TCP cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
+		}
 		dur := cluster.Duration.ToDuration(
 			cfg.TCP.DefaultDuration.ToDuration(
 				cfg.DefaultDuration.ToDuration(10 * time.Second),
@@ -31,9 +45,14 @@ func RunTCP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 			cluster.Addresses,
 			cluster.Timeout.ToDuration(2*time.Second),
 		)
+		probe.Region = cluster.Region
 		launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Addresses, ","), "TCP", probe, statusCh,
-			func() { IncProbeSuccess("tcp", "probe", strings.Join(cluster.Addresses, ","), cluster.Name) },
-			func() { IncProbeFailure("tcp", "probe", strings.Join(cluster.Addresses, ","), cluster.Name) },
+			func() {
+				IncProbeSuccess("tcp", "probe", cluster.Name, sourceRegion, cluster.Region)
+			},
+			func() {
+				IncProbeFailure("tcp", "probe", cluster.Name, sourceRegion, cluster.Region)
+			},
 		)
 	}
 }
@@ -77,7 +96,20 @@ func launchProbeWithDuration(ctx context.Context, ms int, clusterName, host, tar
 }
 
 func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	sourceRegion := os.Getenv("SOURCE_REGION")
+	if sourceRegion == "" {
+		sourceRegion = "local"
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		nodeName = "local"
+	}
 	for _, cluster := range cfg.S3.Clusters {
+		if cluster.Region == "" {
+			log.Printf("ERROR: region missing for S3 cluster %s (source region: %s)", cluster.Name, sourceRegion)
+		} else {
+			log.Printf("Probing S3 cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
+		}
 		dur := cluster.Duration.ToDuration(
 			cfg.S3.DefaultDuration.ToDuration(
 				cfg.DefaultDuration.ToDuration(10 * time.Second),
@@ -98,9 +130,14 @@ func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 				cluster.UseSSL,
 				cluster.Timeout.ToDuration(time.Second),
 			)
-			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3-WRITE", probe, statusCh,
-				func() { IncProbeSuccess("s3", "write", cluster.Endpoint, cluster.Name) },
-				func() { IncProbeFailure("s3", "write", cluster.Endpoint, cluster.Name) },
+			probe.Region = cluster.Region
+			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3_WRITE", probe, statusCh,
+				func() {
+					IncProbeSuccess("s3", "write", cluster.Name, sourceRegion, cluster.Region)
+				},
+				func() {
+					IncProbeFailure("s3", "write", cluster.Name, sourceRegion, cluster.Region)
+				},
 			)
 		}
 		if cluster.Tasks.Read {
@@ -114,16 +151,34 @@ func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 				cluster.UseSSL,
 				cluster.Timeout.ToDuration(time.Second),
 			)
-			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3-READ", probe, statusCh,
-				func() { IncProbeSuccess("s3", "read", cluster.Endpoint, cluster.Name) },
-				func() { IncProbeFailure("s3", "read", "", cluster.Endpoint) },
+			probe.Region = cluster.Region
+			launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "S3_READ", probe, statusCh,
+				func() {
+					IncProbeSuccess("s3", "read", cluster.Name, sourceRegion, cluster.Region)
+				},
+				func() {
+					IncProbeFailure("s3", "read", cluster.Name, sourceRegion, cluster.Region)
+				},
 			)
 		}
 	}
 }
 
 func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	sourceRegion := os.Getenv("SOURCE_REGION")
+	if sourceRegion == "" {
+		sourceRegion = "local"
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		nodeName = "local"
+	}
 	for _, cluster := range cfg.MySQL.Clusters {
+		if cluster.Region == "" {
+			log.Printf("ERROR: region missing for MySQL cluster %s (source region: %s)", cluster.Name, sourceRegion)
+		} else {
+			log.Printf("Probing MySQL cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
+		}
 		dur := cluster.Duration.ToDuration(
 			cfg.MySQL.DefaultDuration.ToDuration(
 				cfg.DefaultDuration.ToDuration(10 * time.Second),
@@ -140,9 +195,14 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 					log.Printf("culd not create mysql probe for cluster: %s, host: %s, err: %v", cluster.Name, host, err)
 					continue
 				}
-				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MySQL-READ", probe, statusCh,
-					func() { IncProbeSuccess("mysql", "read", host, cluster.Name) },
-					func() { IncProbeFailure("mysql", "read", host, cluster.Name) },
+				probe.Region = cluster.Region
+				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MYSQL_READ", probe, statusCh,
+					func() {
+						IncProbeSuccess("mysql", "read", cluster.Name, sourceRegion, cluster.Region)
+					},
+					func() {
+						IncProbeFailure("mysql", "read", cluster.Name, sourceRegion, cluster.Region)
+					},
 				)
 			}
 		}
@@ -153,9 +213,14 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 					log.Printf("culd not create mysql probe for cluster: %s, host: %s, err: %v", cluster.Name, host, err)
 					continue
 				}
-				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MySQL-WRITE", probe, statusCh,
-					func() { IncProbeSuccess("mysql", "write", host, cluster.Name) },
-					func() { IncProbeFailure("mysql", "write", host, cluster.Name) },
+				probe.Region = cluster.Region
+				launchProbeWithDuration(ctx, ms, cluster.Name, host, "MYSQL_WRITE", probe, statusCh,
+					func() {
+						IncProbeSuccess("mysql", "write", cluster.Name, sourceRegion, cluster.Region)
+					},
+					func() {
+						IncProbeFailure("mysql", "write", cluster.Name, sourceRegion, cluster.Region)
+					},
 				)
 			}
 		}
@@ -176,19 +241,34 @@ func RunKafka(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		readProbe := &kafkaprobe.ReadProbe{
 			Brokers: cluster.Brokers,
 			Topic:   cluster.Topic,
+			Region:  cluster.Region,
 		}
 		launchProbeWithDuration(ctx, ms, cluster.Name, "", "Kafka-READ", readProbe, statusCh, nil, nil)
 
 		writeProbe := &kafkaprobe.WriteProbe{
 			Brokers: cluster.Brokers,
 			Topic:   cluster.Topic,
+			Region:  cluster.Region,
 		}
 		launchProbeWithDuration(ctx, ms, cluster.Name, "", "Kafka-WRITE", writeProbe, statusCh, nil, nil)
 	}
 }
 
 func RunRedis(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	sourceRegion := os.Getenv("SOURCE_REGION")
+	if sourceRegion == "" {
+		sourceRegion = "local"
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		nodeName = "local"
+	}
 	for _, cluster := range cfg.Redis.Clusters {
+		if cluster.Region == "" {
+			log.Printf("ERROR: region missing for Redis cluster %s (source region: %s)", cluster.Name, sourceRegion)
+		} else {
+			log.Printf("Probing Redis cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
+		}
 		dur := cluster.Duration.ToDuration(
 			cfg.Redis.DefaultDuration.ToDuration(
 				cfg.Redis.DefaultDuration.ToDuration(
@@ -203,18 +283,28 @@ func RunRedis(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		if cluster.Tasks.Read {
 			for _, node := range cluster.Nodes {
 				probe := redisprobe.NewReadProbe(node, cluster.Password)
-				launchProbeWithDuration(ctx, ms, cluster.Name, node, "Redis-READ", probe, statusCh,
-					func() { IncProbeSuccess("redis", "read", node, cluster.Name) },
-					func() { IncProbeFailure("redis", "read", node, cluster.Name) },
+				probe.Region = cluster.Region
+				launchProbeWithDuration(ctx, ms, cluster.Name, node, "REDIS_READ", probe, statusCh,
+					func() {
+						IncProbeSuccess("redis", "read", cluster.Name, sourceRegion, cluster.Region)
+					},
+					func() {
+						IncProbeFailure("redis", "read", cluster.Name, sourceRegion, cluster.Region)
+					},
 				)
 			}
 		}
 		if cluster.Tasks.Write {
 			for _, node := range cluster.Nodes {
 				probe := redisprobe.NewWriteProbe(node, cluster.Password)
-				launchProbeWithDuration(ctx, ms, cluster.Name, node, "Redis-WRITE", probe, statusCh,
-					func() { IncProbeSuccess("redis", "write", node, cluster.Name) },
-					func() { IncProbeFailure("redis", "write", node, cluster.Name) },
+				probe.Region = cluster.Region
+				launchProbeWithDuration(ctx, ms, cluster.Name, node, "REDIS_WRITE", probe, statusCh,
+					func() {
+						IncProbeSuccess("redis", "write", cluster.Name, sourceRegion, cluster.Region)
+					},
+					func() {
+						IncProbeFailure("redis", "write", cluster.Name, sourceRegion, cluster.Region)
+					},
 				)
 			}
 		}
@@ -222,7 +312,20 @@ func RunRedis(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 }
 
 func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	sourceRegion := os.Getenv("SOURCE_REGION")
+	if sourceRegion == "" {
+		sourceRegion = "local"
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		nodeName = "local"
+	}
 	for _, cluster := range cfg.RedisCluster.Clusters {
+		if cluster.Region == "" {
+			log.Printf("ERROR: region missing for RedisCluster cluster %s (source region: %s)", cluster.Name, sourceRegion)
+		} else {
+			log.Printf("Probing RedisCluster cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
+		}
 		dur := cluster.Duration.ToDuration(
 			cfg.RedisCluster.DefaultDuration.ToDuration(
 				cfg.RedisCluster.DefaultDuration.ToDuration(
@@ -235,15 +338,33 @@ func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg
 			ms = 100
 		}
 		probe := redisprobe.NewClusterProbe(cluster.Nodes, cluster.Password)
+		probe.Region = cluster.Region
 		launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Nodes, ","), "RedisCluster-READWRITE", probe, statusCh,
-			func() { IncProbeSuccess("redisCluster", "read", strings.Join(cluster.Nodes, ","), cluster.Name) },
-			func() { IncProbeFailure("redisCluster", "read", strings.Join(cluster.Nodes, ","), cluster.Name) },
+			func() {
+				IncProbeSuccess("redisCluster", "read", cluster.Name, sourceRegion, cluster.Region)
+			},
+			func() {
+				IncProbeFailure("redisCluster", "read", cluster.Name, sourceRegion, cluster.Region)
+			},
 		)
 	}
 }
 
 func RunHTTP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	sourceRegion := os.Getenv("SOURCE_REGION")
+	if sourceRegion == "" {
+		sourceRegion = "local"
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		nodeName = "local"
+	}
 	for _, cluster := range cfg.HTTP.Clusters {
+		if cluster.Region == "" {
+			log.Printf("ERROR: region missing for HTTP cluster %s (source region: %s)", cluster.Name, sourceRegion)
+		} else {
+			log.Printf("Probing HTTP cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
+		}
 		dur := cluster.Duration.ToDuration(
 			cfg.HTTP.DefaultDuration.ToDuration(
 				cfg.DefaultDuration.ToDuration(10 * time.Second),
@@ -263,9 +384,14 @@ func RunHTTP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 			cluster.Timeout.ToDuration(2*time.Second),
 			cluster.SkipTLSVerify,
 		)
+		probe.Region = cluster.Region
 		launchProbeWithDuration(ctx, ms, cluster.Name, cluster.Endpoint, "HTTP", probe, statusCh,
-			func() { IncProbeSuccess("http", "probe", cluster.Endpoint, cluster.Name) },
-			func() { IncProbeFailure("http", "probe", cluster.Endpoint, cluster.Name) },
+			func() {
+				IncProbeSuccess("http", "probe", cluster.Name, sourceRegion, cluster.Region)
+			},
+			func() {
+				IncProbeFailure("http", "probe", cluster.Name, sourceRegion, cluster.Region)
+			},
 		)
 	}
 }

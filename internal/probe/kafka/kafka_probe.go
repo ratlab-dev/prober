@@ -6,6 +6,7 @@ import (
 )
 
 type ReadProbe struct {
+	Region  string
 	Brokers []string
 	Topic   string
 }
@@ -16,10 +17,11 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ReadProbe) MetadataString() string {
-	return fmt.Sprintf("KafkaReadProbe | Brokers: %v | Topic: %s", p.Brokers, p.Topic)
+	return fmt.Sprintf("Brokers: %v | Topic: %s | Region: %s", p.Brokers, p.Topic, p.Region)
 }
 
 type WriteProbe struct {
+	Region  string
 	Brokers []string
 	Topic   string
 }
@@ -30,5 +32,5 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 }
 
 func (p *WriteProbe) MetadataString() string {
-	return fmt.Sprintf("KafkaWriteProbe | Brokers: %v | Topic: %s", p.Brokers, p.Topic)
+	return fmt.Sprintf("Brokers: %v | Topic: %s | Region: %s", p.Brokers, p.Topic, p.Region)
 }

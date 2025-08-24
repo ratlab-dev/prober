@@ -80,7 +80,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 			statusCh := make(chan statusMsg, 10)
 			go runner(ctx, singleCfg, statusCh)
 			for m := range statusCh {
-				log.Println(m.Status, m.Details, " | Error: ", m.Err)
+				log.Printf("status: %v | target_type: %v | cluster: %v | details: %v | Error: %v", m.Status, m.TargetType, m.Cluster, m.Details, m.Err)
 			}
 		}()
 	}
@@ -91,12 +91,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	for _, cluster := range cfg.TCP.Clusters {
 		singleCfg := &Config{}
 		singleCfg.TCP.DefaultDuration = cfg.TCP.DefaultDuration
-		singleCfg.TCP.Clusters = []struct {
-			Name      string         `yaml:"name"`
-			Addresses []string       `yaml:"addresses"`
-			Duration  DurationString `yaml:"duration"`
-			Timeout   DurationString `yaml:"timeout"`
-		}{cluster}
+		singleCfg.TCP.Clusters = []TCPCluster{cluster}
 		startOrUpdateProbe("tcp", cluster.Name, cluster, RunTCP, singleCfg)
 	}
 
@@ -104,21 +99,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	for _, cluster := range cfg.S3.Clusters {
 		singleCfg := &Config{}
 		singleCfg.S3.DefaultDuration = cfg.S3.DefaultDuration
-		singleCfg.S3.Clusters = []struct {
-			Name      string         `yaml:"name"`
-			Endpoint  string         `yaml:"endpoint"`
-			Region    string         `yaml:"region"`
-			AccessKey string         `yaml:"accessKey"`
-			SecretKey string         `yaml:"secretKey"`
-			Bucket    string         `yaml:"bucket"`
-			UseSSL    bool           `yaml:"useSSL"`
-			Duration  DurationString `yaml:"duration"`
-			Timeout   DurationString `yaml:"timeout"`
-			Tasks     struct {
-				Read  bool `yaml:"read"`
-				Write bool `yaml:"write"`
-			} `yaml:"tasks"`
-		}{cluster}
+		singleCfg.S3.Clusters = []S3Cluster{cluster}
 		startOrUpdateProbe("s3", cluster.Name, cluster, RunS3, singleCfg)
 	}
 
@@ -126,21 +107,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	for _, cluster := range cfg.MySQL.Clusters {
 		singleCfg := &Config{}
 		singleCfg.MySQL.DefaultDuration = cfg.MySQL.DefaultDuration
-		singleCfg.MySQL.Clusters = []struct {
-			Name       string         `yaml:"name"`
-			ReadHosts  []string       `yaml:"read_hosts"`
-			WriteHosts []string       `yaml:"write_hosts"`
-			User       string         `yaml:"user"`
-			Password   string         `yaml:"password"`
-			Database   string         `yaml:"database"`
-			Duration   DurationString `yaml:"duration"`
-			ReadQuery  string         `yaml:"read_query"`
-			WriteQuery string         `yaml:"write_query"`
-			Tasks      struct {
-				Read  bool `yaml:"read"`
-				Write bool `yaml:"write"`
-			} `yaml:"tasks"`
-		}{cluster}
+		singleCfg.MySQL.Clusters = []MySQLCluster{cluster}
 		startOrUpdateProbe("mysql", cluster.Name, cluster, RunMySQL, singleCfg)
 	}
 
@@ -148,12 +115,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	for _, cluster := range cfg.Kafka.Clusters {
 		singleCfg := &Config{}
 		singleCfg.Kafka.DefaultDuration = cfg.Kafka.DefaultDuration
-		singleCfg.Kafka.Clusters = []struct {
-			Name     string         `yaml:"name"`
-			Brokers  []string       `yaml:"brokers"`
-			Topic    string         `yaml:"topic"`
-			Duration DurationString `yaml:"duration"`
-		}{cluster}
+		singleCfg.Kafka.Clusters = []KafkaCluster{cluster}
 		startOrUpdateProbe("kafka", cluster.Name, cluster, RunKafka, singleCfg)
 	}
 
@@ -161,16 +123,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	for _, cluster := range cfg.Redis.Clusters {
 		singleCfg := &Config{}
 		singleCfg.Redis.DefaultDuration = cfg.Redis.DefaultDuration
-		singleCfg.Redis.Clusters = []struct {
-			Name     string         `yaml:"name"`
-			Nodes    []string       `yaml:"nodes"`
-			Password string         `yaml:"password"`
-			Duration DurationString `yaml:"duration"`
-			Tasks    struct {
-				Read  bool `yaml:"read"`
-				Write bool `yaml:"write"`
-			} `yaml:"tasks"`
-		}{cluster}
+		singleCfg.Redis.Clusters = []RedisCluster{cluster}
 		startOrUpdateProbe("redis", cluster.Name, cluster, RunRedis, singleCfg)
 	}
 
@@ -178,12 +131,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	for _, cluster := range cfg.RedisCluster.Clusters {
 		singleCfg := &Config{}
 		singleCfg.RedisCluster.DefaultDuration = cfg.RedisCluster.DefaultDuration
-		singleCfg.RedisCluster.Clusters = []struct {
-			Name     string         `yaml:"name"`
-			Nodes    []string       `yaml:"nodes"`
-			Password string         `yaml:"password"`
-			Duration DurationString `yaml:"duration"`
-		}{cluster}
+		singleCfg.RedisCluster.Clusters = []RedisClusterCluster{cluster}
 		startOrUpdateProbe("redisCluster", cluster.Name, cluster, RunRedisCluster, singleCfg)
 	}
 
@@ -191,18 +139,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	for _, cluster := range cfg.HTTP.Clusters {
 		singleCfg := &Config{}
 		singleCfg.HTTP.DefaultDuration = cfg.HTTP.DefaultDuration
-		singleCfg.HTTP.Clusters = []struct {
-			Name                    string            `yaml:"name"`
-			Endpoint                string            `yaml:"endpoint"`
-			Method                  string            `yaml:"method"`
-			Body                    string            `yaml:"body"`
-			Headers                 map[string]string `yaml:"headers"`
-			ProxyURL                string            `yaml:"proxyURL"`
-			UnacceptableStatusCodes []int             `yaml:"unacceptableStatusCodes"`
-			Timeout                 DurationString    `yaml:"timeout"`
-			Duration                DurationString    `yaml:"duration"`
-			SkipTLSVerify           bool              `yaml:"skipTLSVerify"`
-		}{cluster}
+		singleCfg.HTTP.Clusters = []HTTPCluster{cluster}
 		startOrUpdateProbe("http", cluster.Name, cluster, RunHTTP, singleCfg)
 	}
 

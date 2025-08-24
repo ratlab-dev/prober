@@ -14,6 +14,7 @@ http:
       timeout: 2s
       duration: 2s
       skipTLSVerify: false
+      region: "us-east-1"  # <-- Add your region here
 # S3 (MinIO) probe config
 s3:
   defaultDuration: 5s
@@ -47,6 +48,7 @@ mysql:
         - 127.0.0.1:3306
       write_hosts:
         - 127.0.0.1:3306
+      region: "us-east-1"  # <-- Add your region here
       tasks:
         read: true
         write: true
@@ -61,6 +63,7 @@ redis:
         - 127.0.0.1:6379
       password: ""
       duration: 2s     # optional, overrides all above for this cluster
+      region: "us-east-1"  # <-- Add your region here
       tasks:
         read: true
         write: true
@@ -75,6 +78,7 @@ redisCluster:
         - 127.0.0.1:7003
       password: ""
       duration: 2s      # optional, overrides all above for this cluster
+      region: "us-east-1"  # <-- Add your region here
       tasks:
         read: true
         write: true
@@ -83,17 +87,18 @@ redisCluster:
 # Probes google.com:443 every 5 minutes
 
 tcp:
-  defaultDuration: 1s
+  defaultDuration: 1m
   clusters:
-    # - name: my-docker-processes
-    #   addresses:
-    #     - 127.0.0.1:6379
-    #     - 127.0.0.1:7001
-    #     - 127.0.0.1:7002
-    #     - 127.0.0.1:7003
+    - name: my-docker-processes
+      addresses:
+        - 127.0.0.1:6379
+        - 127.0.0.1:7001
+        - 127.0.0.1:7002
+        - 127.0.0.1:7003
     - name: google-addresses
       addresses:
         - google.com:443
         - gmail.com:443
-      duration: 1s
+      duration: 1m
       timeout: 2s
+      region: "us-east-1"  # <-- Add your region here

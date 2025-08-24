@@ -20,100 +20,116 @@ func (d DurationString) ToDuration(defaultDuration time.Duration) time.Duration 
 	return dur
 }
 
+type TCPCluster struct {
+	Name      string         `yaml:"name"`
+	Addresses []string       `yaml:"addresses"`
+	Duration  DurationString `yaml:"duration"`
+	Timeout   DurationString `yaml:"timeout"`
+	Region    string         `yaml:"region"`
+}
+type S3Tasks struct {
+	Read  bool `yaml:"read"`
+	Write bool `yaml:"write"`
+}
+type S3Cluster struct {
+	Name      string         `yaml:"name"`
+	Endpoint  string         `yaml:"endpoint"`
+	Region    string         `yaml:"region"`
+	AccessKey string         `yaml:"accessKey"`
+	SecretKey string         `yaml:"secretKey"`
+	Bucket    string         `yaml:"bucket"`
+	UseSSL    bool           `yaml:"useSSL"`
+	Duration  DurationString `yaml:"duration"`
+	Timeout   DurationString `yaml:"timeout"`
+	Tasks     S3Tasks        `yaml:"tasks"`
+}
+type MySQLTasks struct {
+	Read  bool `yaml:"read"`
+	Write bool `yaml:"write"`
+}
+type MySQLCluster struct {
+	Name       string         `yaml:"name"`
+	ReadHosts  []string       `yaml:"read_hosts"`
+	WriteHosts []string       `yaml:"write_hosts"`
+	User       string         `yaml:"user"`
+	Password   string         `yaml:"password"`
+	Database   string         `yaml:"database"`
+	Duration   DurationString `yaml:"duration"`
+	ReadQuery  string         `yaml:"read_query"`
+	WriteQuery string         `yaml:"write_query"`
+	Region     string         `yaml:"region"`
+	Tasks      MySQLTasks     `yaml:"tasks"`
+}
+type KafkaCluster struct {
+	Name     string         `yaml:"name"`
+	Brokers  []string       `yaml:"brokers"`
+	Topic    string         `yaml:"topic"`
+	Duration DurationString `yaml:"duration"`
+	Region   string         `yaml:"region"`
+}
+type RedisTasks struct {
+	Read  bool `yaml:"read"`
+	Write bool `yaml:"write"`
+}
+type RedisCluster struct {
+	Name     string         `yaml:"name"`
+	Nodes    []string       `yaml:"nodes"`
+	Password string         `yaml:"password"`
+	Duration DurationString `yaml:"duration"`
+	Region   string         `yaml:"region"`
+	Tasks    RedisTasks     `yaml:"tasks"`
+}
+type HTTPCluster struct {
+	Name                    string            `yaml:"name"`
+	Endpoint                string            `yaml:"endpoint"`
+	Method                  string            `yaml:"method"`
+	Body                    string            `yaml:"body"`
+	Headers                 map[string]string `yaml:"headers"`
+	ProxyURL                string            `yaml:"proxyURL"`
+	UnacceptableStatusCodes []int             `yaml:"unacceptableStatusCodes"`
+	Timeout                 DurationString    `yaml:"timeout"`
+	Duration                DurationString    `yaml:"duration"`
+	SkipTLSVerify           bool              `yaml:"skipTLSVerify"`
+	Region                  string            `yaml:"region"`
+}
+type RedisClusterCluster struct {
+	Name     string         `yaml:"name"`
+	Nodes    []string       `yaml:"nodes"`
+	Password string         `yaml:"password"`
+	Duration DurationString `yaml:"duration"`
+	Region   string         `yaml:"region"`
+}
+
+// Config struct
 type Config struct {
 	TCP struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
-		Clusters        []struct {
-			Name      string         `yaml:"name"`
-			Addresses []string       `yaml:"addresses"`
-			Duration  DurationString `yaml:"duration"`
-			Timeout   DurationString `yaml:"timeout"`
-		} `yaml:"clusters"`
+		Clusters        []TCPCluster   `yaml:"clusters"`
 	} `yaml:"tcp"`
 	S3 struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
-		Clusters        []struct {
-			Name      string         `yaml:"name"`
-			Endpoint  string         `yaml:"endpoint"`
-			Region    string         `yaml:"region"`
-			AccessKey string         `yaml:"accessKey"`
-			SecretKey string         `yaml:"secretKey"`
-			Bucket    string         `yaml:"bucket"`
-			UseSSL    bool           `yaml:"useSSL"`
-			Duration  DurationString `yaml:"duration"`
-			Timeout   DurationString `yaml:"timeout"`
-			Tasks     struct {
-				Read  bool `yaml:"read"`
-				Write bool `yaml:"write"`
-			} `yaml:"tasks"`
-		} `yaml:"clusters"`
+		Clusters        []S3Cluster    `yaml:"clusters"`
 	} `yaml:"s3"`
 	DefaultDuration DurationString `yaml:"defaultDuration"`
-	// Add more per-type defaults as needed
-
-	MySQL struct {
+	MySQL           struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
-		Clusters        []struct {
-			Name       string         `yaml:"name"`
-			ReadHosts  []string       `yaml:"read_hosts"`
-			WriteHosts []string       `yaml:"write_hosts"`
-			User       string         `yaml:"user"`
-			Password   string         `yaml:"password"`
-			Database   string         `yaml:"database"`
-			Duration   DurationString `yaml:"duration"`
-			ReadQuery  string         `yaml:"read_query"`
-			WriteQuery string         `yaml:"write_query"`
-			Tasks      struct {
-				Read  bool `yaml:"read"`
-				Write bool `yaml:"write"`
-			} `yaml:"tasks"`
-		} `yaml:"clusters"`
+		Clusters        []MySQLCluster `yaml:"clusters"`
 	} `yaml:"mysql"`
 	Kafka struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
-		Clusters        []struct {
-			Name     string         `yaml:"name"`
-			Brokers  []string       `yaml:"brokers"`
-			Topic    string         `yaml:"topic"`
-			Duration DurationString `yaml:"duration"`
-		} `yaml:"clusters"`
+		Clusters        []KafkaCluster `yaml:"clusters"`
 	} `yaml:"kafka"`
 	Redis struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
-		Clusters        []struct {
-			Name     string         `yaml:"name"`
-			Nodes    []string       `yaml:"nodes"`
-			Password string         `yaml:"password"`
-			Duration DurationString `yaml:"duration"`
-			Tasks    struct {
-				Read  bool `yaml:"read"`
-				Write bool `yaml:"write"`
-			} `yaml:"tasks"`
-		} `yaml:"clusters"`
+		Clusters        []RedisCluster `yaml:"clusters"`
 	} `yaml:"redis"`
 	HTTP struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
-		Clusters        []struct {
-			Name                    string            `yaml:"name"`
-			Endpoint                string            `yaml:"endpoint"`
-			Method                  string            `yaml:"method"`
-			Body                    string            `yaml:"body"`
-			Headers                 map[string]string `yaml:"headers"`
-			ProxyURL                string            `yaml:"proxyURL"`
-			UnacceptableStatusCodes []int             `yaml:"unacceptableStatusCodes"`
-			Timeout                 DurationString    `yaml:"timeout"`
-			Duration                DurationString    `yaml:"duration"`
-			SkipTLSVerify           bool              `yaml:"skipTLSVerify"`
-		} `yaml:"clusters"`
+		Clusters        []HTTPCluster  `yaml:"clusters"`
 	} `yaml:"http"`
 	RedisCluster struct {
-		DefaultDuration DurationString `yaml:"defaultDuration"`
-		Clusters        []struct {
-			Name     string         `yaml:"name"`
-			Nodes    []string       `yaml:"nodes"`
-			Password string         `yaml:"password"`
-			Duration DurationString `yaml:"duration"`
-		} `yaml:"clusters"`
+		DefaultDuration DurationString        `yaml:"defaultDuration"`
+		Clusters        []RedisClusterCluster `yaml:"clusters"`
 	} `yaml:"redisCluster"`
 }
 

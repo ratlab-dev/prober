@@ -11,6 +11,7 @@ import (
 )
 
 type ReadProbe struct {
+	Region   string
 	Host     string
 	User     string
 	Password string
@@ -75,10 +76,11 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ReadProbe) MetadataString() string {
-	return fmt.Sprintf("MySQLReadProbe | Host: %s | Database: %s | User: %s", p.Host, p.Database, p.User)
+	return fmt.Sprintf("Host: %s | Database: %s | User: %s | Region: %s", p.Host, p.Database, p.User, p.Region)
 }
 
 type WriteProbe struct {
+	Region   string
 	Host     string
 	User     string
 	Password string
@@ -119,5 +121,5 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 }
 
 func (p *WriteProbe) MetadataString() string {
-	return fmt.Sprintf("MySQLWriteProbe | Host: %s | Database: %s | User: %s", p.Host, p.Database, p.User)
+	return fmt.Sprintf("Host: %s | Database: %s | User: %s | Region: %s", p.Host, p.Database, p.User, p.Region)
 }
