@@ -87,6 +87,19 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 
 	// --- Launch or update probes for each kind ---
 
+	// TCP
+	for _, cluster := range cfg.TCP.Clusters {
+		singleCfg := &Config{}
+		singleCfg.TCP.DefaultDuration = cfg.TCP.DefaultDuration
+		singleCfg.TCP.Clusters = []struct {
+			Name      string         `yaml:"name"`
+			Addresses []string       `yaml:"addresses"`
+			Duration  DurationString `yaml:"duration"`
+			Timeout   DurationString `yaml:"timeout"`
+		}{cluster}
+		startOrUpdateProbe("tcp", cluster.Name, cluster, RunTCP, singleCfg)
+	}
+
 	// S3
 	for _, cluster := range cfg.S3.Clusters {
 		singleCfg := &Config{}

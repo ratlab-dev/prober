@@ -21,6 +21,15 @@ func (d DurationString) ToDuration(defaultDuration time.Duration) time.Duration 
 }
 
 type Config struct {
+	TCP struct {
+		DefaultDuration DurationString `yaml:"defaultDuration"`
+		Clusters        []struct {
+			Name      string         `yaml:"name"`
+			Addresses []string       `yaml:"addresses"`
+			Duration  DurationString `yaml:"duration"`
+			Timeout   DurationString `yaml:"timeout"`
+		} `yaml:"clusters"`
+	} `yaml:"tcp"`
 	S3 struct {
 		DefaultDuration DurationString `yaml:"defaultDuration"`
 		Clusters        []struct {

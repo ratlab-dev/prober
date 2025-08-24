@@ -78,3 +78,22 @@ redisCluster:
       tasks:
         read: true
         write: true
+
+# TCP probe config
+# Probes google.com:443 every 5 minutes
+
+tcp:
+  defaultDuration: 1s
+  clusters:
+    # - name: my-docker-processes
+    #   addresses:
+    #     - 127.0.0.1:6379
+    #     - 127.0.0.1:7001
+    #     - 127.0.0.1:7002
+    #     - 127.0.0.1:7003
+    - name: google-addresses
+      addresses:
+        - google.com:443
+        - gmail.com:443
+      duration: 1s
+      timeout: 2s

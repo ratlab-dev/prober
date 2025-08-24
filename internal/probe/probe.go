@@ -11,7 +11,32 @@ import (
 	mysqlprobe "github.com/yourorg/prober/internal/probe/mysql"
 	redisprobe "github.com/yourorg/prober/internal/probe/redis"
 	"github.com/yourorg/prober/internal/probe/s3"
+	tcpprobe "github.com/yourorg/prober/internal/probe/tcp"
 )
+
+// ...existing code...
+
+func RunTCP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	for _, cluster := range cfg.TCP.Clusters {
+		dur := cluster.Duration.ToDuration(
+			cfg.TCP.DefaultDuration.ToDuration(
+				cfg.DefaultDuration.ToDuration(10 * time.Second),
+			),
+		)
+		ms := int(dur.Milliseconds())
+		if ms < 100 {
+			ms = 100
+		}
+		probe := tcpprobe.NewTCPProbe(
+			cluster.Addresses,
+			cluster.Timeout.ToDuration(2*time.Second),
+		)
+		launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Addresses, ","), "TCP", probe, statusCh,
+			func() { IncProbeSuccess("tcp", "probe", strings.Join(cluster.Addresses, ","), cluster.Name) },
+			func() { IncProbeFailure("tcp", "probe", strings.Join(cluster.Addresses, ","), cluster.Name) },
+		)
+	}
+}
 
 type statusMsg struct {
 	TargetType string
