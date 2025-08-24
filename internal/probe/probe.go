@@ -29,8 +29,6 @@ func RunTCP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.TCP.Clusters {
 		if cluster.Region == "" {
 			log.Printf("ERROR: region missing for TCP cluster %s (source region: %s)", cluster.Name, sourceRegion)
-		} else {
-			log.Printf("Probing TCP cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
 		}
 		dur := cluster.Duration.ToDuration(
 			cfg.TCP.DefaultDuration.ToDuration(
@@ -72,9 +70,9 @@ func launchProbeWithDuration(ctx context.Context, ms int, clusterName, host, tar
 		defer ticker.Stop()
 		for range ticker.C {
 			err := probe.Probe(ctx)
-			status := "OK"
+			status := "OK "
 			if err != nil {
-				status = "ERROR"
+				status = "ERR"
 				if onFailure != nil {
 					onFailure()
 				}
@@ -107,8 +105,6 @@ func RunS3(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.S3.Clusters {
 		if cluster.Region == "" {
 			log.Printf("ERROR: region missing for S3 cluster %s (source region: %s)", cluster.Name, sourceRegion)
-		} else {
-			log.Printf("Probing S3 cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
 		}
 		dur := cluster.Duration.ToDuration(
 			cfg.S3.DefaultDuration.ToDuration(
@@ -176,8 +172,6 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.MySQL.Clusters {
 		if cluster.Region == "" {
 			log.Printf("ERROR: region missing for MySQL cluster %s (source region: %s)", cluster.Name, sourceRegion)
-		} else {
-			log.Printf("Probing MySQL cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
 		}
 		dur := cluster.Duration.ToDuration(
 			cfg.MySQL.DefaultDuration.ToDuration(
@@ -266,8 +260,6 @@ func RunRedis(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.Redis.Clusters {
 		if cluster.Region == "" {
 			log.Printf("ERROR: region missing for Redis cluster %s (source region: %s)", cluster.Name, sourceRegion)
-		} else {
-			log.Printf("Probing Redis cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
 		}
 		dur := cluster.Duration.ToDuration(
 			cfg.Redis.DefaultDuration.ToDuration(
@@ -323,8 +315,6 @@ func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg
 	for _, cluster := range cfg.RedisCluster.Clusters {
 		if cluster.Region == "" {
 			log.Printf("ERROR: region missing for RedisCluster cluster %s (source region: %s)", cluster.Name, sourceRegion)
-		} else {
-			log.Printf("Probing RedisCluster cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
 		}
 		dur := cluster.Duration.ToDuration(
 			cfg.RedisCluster.DefaultDuration.ToDuration(
@@ -362,8 +352,6 @@ func RunHTTP(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 	for _, cluster := range cfg.HTTP.Clusters {
 		if cluster.Region == "" {
 			log.Printf("ERROR: region missing for HTTP cluster %s (source region: %s)", cluster.Name, sourceRegion)
-		} else {
-			log.Printf("Probing HTTP cluster %s | source region: %s | destination region: %s", cluster.Name, sourceRegion, cluster.Region)
 		}
 		dur := cluster.Duration.ToDuration(
 			cfg.HTTP.DefaultDuration.ToDuration(

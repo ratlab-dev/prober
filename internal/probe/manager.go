@@ -80,7 +80,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 			statusCh := make(chan statusMsg, 10)
 			go runner(ctx, singleCfg, statusCh)
 			for m := range statusCh {
-				log.Printf("status: %v | target_type: %v | cluster: %v | details: %v | Error: %v", m.Status, m.TargetType, m.Cluster, m.Details, m.Err)
+				log.Printf("[ProbeResult ] status: %v | target_type: %v | cluster: %v | details: %v | Error: %v", m.Status, m.TargetType, m.Cluster, m.Details, m.Err)
 			}
 		}()
 	}
@@ -146,6 +146,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 	// --- Remove probes for clusters that no longer exist ---
 	for key := range pm.probes {
 		if _, stillActive := activeClusters[key]; !stillActive {
+			log.Printf("[ProbeManager] Stopping probe for kind=%s, cluster=%s due to config deletion", key.Kind, key.Name)
 			pm.probes[key]()
 			delete(pm.probes, key)
 			delete(pm.configs, key)
