@@ -237,14 +237,14 @@ func RunKafka(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 			Topic:   cluster.Topic,
 			Region:  cluster.Region,
 		}
-		launchProbeWithDuration(ctx, ms, cluster.Name, "", "Kafka-READ", readProbe, statusCh, nil, nil)
+		launchProbeWithDuration(ctx, ms, cluster.Name, "", "KAFKA_READ", readProbe, statusCh, nil, nil)
 
 		writeProbe := &kafkaprobe.WriteProbe{
 			Brokers: cluster.Brokers,
 			Topic:   cluster.Topic,
 			Region:  cluster.Region,
 		}
-		launchProbeWithDuration(ctx, ms, cluster.Name, "", "Kafka-WRITE", writeProbe, statusCh, nil, nil)
+		launchProbeWithDuration(ctx, ms, cluster.Name, "", "KAFKA_WRITE", writeProbe, statusCh, nil, nil)
 	}
 }
 
@@ -329,7 +329,7 @@ func RunRedisCluster(ctx context.Context, cfg *Config, statusCh chan<- statusMsg
 		}
 		probe := redisprobe.NewClusterProbe(cluster.Nodes, cluster.Password)
 		probe.Region = cluster.Region
-		launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Nodes, ","), "RedisCluster-READWRITE", probe, statusCh,
+		launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Nodes, ","), "REDISCLUSTER_READWRITE", probe, statusCh,
 			func() {
 				IncProbeSuccess("redisCluster", "read", cluster.Name, sourceRegion, cluster.Region)
 			},

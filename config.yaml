@@ -1,9 +1,9 @@
 defaultDuration: 5s
 # Example for HTTP probe
 http:
-  defaultDuration: 1s
+  defaultDuration: 10s
   clusters:
-    - name: example-http
+    - name: example
       endpoint: https://httpbin.org/status/200
       method: GET
       body: ""
@@ -12,21 +12,21 @@ http:
       proxyURL: "http://localhost:8888"
       unacceptableStatusCodes: [500, 502, 500]
       timeout: 2s
-      duration: 2s
+      duration: 10s
       skipTLSVerify: false
       region: "us-east-1"  # <-- Add your region here
 # S3 (MinIO) probe config
 s3:
   defaultDuration: 5s
   clusters:
-    - name: minio-test
+    - name: minio
       endpoint: http://127.0.0.1:9000
       region: us-east-1
       accessKey: minioadmin
       secretKey: minioadmin
       bucket: test-s3-bucket
       useSSL: false
-      duration: 2s
+      duration: 10s
       timeout: 200ms
       tasks:
         read: true
@@ -37,11 +37,11 @@ s3:
 mysql:
   defaultDuration: 5s  # optional, overrides global and per-type for mysql
   clusters:
-    - name: main-mysql
+    - name: test
       user: testuser
       password: testpass
       database: testdb
-      duration: 2s
+      duration: 10s
       read_query: "SELECT 1"
       write_query: "SELECT 1"
       read_hosts:
@@ -58,11 +58,11 @@ mysql:
 redis:
   defaultDuration: 5s  # optional, overrides global and per-type for redis
   clusters:
-    - name: main-redis
+    - name: test
       nodes:
         - 127.0.0.1:6379
       password: ""
-      duration: 2s     # optional, overrides all above for this cluster
+      duration: 10s     # optional, overrides all above for this cluster
       region: "us-east-1"  # <-- Add your region here
       tasks:
         read: true
@@ -71,13 +71,13 @@ redis:
 redisCluster:
   defaultDuration: 5s  # optional, overrides global and per-type for redisCluster
   clusters:
-    - name: test-redis-cluster
+    - name: test
       nodes:
         - 127.0.0.1:7001
         - 127.0.0.1:7002
         - 127.0.0.1:7003
       password: ""
-      duration: 2s      # optional, overrides all above for this cluster
+      duration: 10s      # optional, overrides all above for this cluster
       region: "us-east-1"  # <-- Add your region here
       tasks:
         read: true
@@ -89,14 +89,14 @@ redisCluster:
 tcp:
   defaultDuration: 1m
   clusters:
-    - name: my-docker-processes
+    - name: local
       region: us-east-2
       addresses:
         - 127.0.0.1:6379
         - 127.0.0.1:7001
         - 127.0.0.1:7002
         - 127.0.0.1:7003
-    - name: google-addresses
+    - name: google
       addresses:
         - google.com:443
         - gmail.com:443

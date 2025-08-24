@@ -80,7 +80,7 @@ func (pm *ProbeManager) LaunchOrUpdateProbes(cfg *Config) {
 			statusCh := make(chan statusMsg, 10)
 			go runner(ctx, singleCfg, statusCh)
 			for m := range statusCh {
-				log.Printf("[ProbeResult ] status: %v | target_type: %v | cluster: %v | details: %v | Error: %v", m.Status, m.TargetType, m.Cluster, m.Details, m.Err)
+				log.Printf("[ProbeResult ] status: %v | target_type: %-25v | cluster: %-20v | details: %-120v | Error: %v", m.Status, m.TargetType, m.Cluster, m.Details, m.Err)
 			}
 		}()
 	}

@@ -182,9 +182,9 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ReadProbe) MetadataString() string {
-	return fmt.Sprintf("Endpoint: %s | Bucket: %s | Region: %s", p.Endpoint, p.Bucket, p.Region)
+	return fmt.Sprintf("Endpoint: %s , Bucket: %s , Region: %s", p.Endpoint, p.Bucket, p.Region)
 }
 
 func (p *WriteProbe) MetadataString() string {
-	return fmt.Sprintf("Endpoint: %s | Bucket: %s | Region: %s", p.Endpoint, p.Bucket, p.Region)
+	return fmt.Sprintf("Endpoint: %s , Bucket: %s , Region: %s", p.Endpoint, p.Bucket, p.Region)
 }

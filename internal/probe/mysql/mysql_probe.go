@@ -76,7 +76,7 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ReadProbe) MetadataString() string {
-	return fmt.Sprintf("Host: %s | Database: %s | User: %s | Region: %s", p.Host, p.Database, p.User, p.Region)
+	return fmt.Sprintf("Host: %s , Database: %s , User: %s , Region: %s", p.Host, p.Database, p.User, p.Region)
 }
 
 type WriteProbe struct {
@@ -121,5 +121,5 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 }
 
 func (p *WriteProbe) MetadataString() string {
-	return fmt.Sprintf("Host: %s | Database: %s | User: %s | Region: %s", p.Host, p.Database, p.User, p.Region)
+	return fmt.Sprintf("Host: %s , Database: %s , User: %s , Region: %s", p.Host, p.Database, p.User, p.Region)
 }

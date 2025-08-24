@@ -83,7 +83,7 @@ func (p *HTTPProbe) Probe(ctx context.Context) error {
 }
 
 func (p *HTTPProbe) MetadataString() string {
-	return fmt.Sprintf("Endpoint: %s | Method: %s | Proxy: %s | Region: %s", p.Endpoint, p.Method, p.ProxyURL, p.Region)
+	return fmt.Sprintf("Endpoint: %s , Method: %s , Proxy: %s , Region: %s", p.Endpoint, p.Method, p.ProxyURL, p.Region)
 }
 
 type HTTPStatusError struct {

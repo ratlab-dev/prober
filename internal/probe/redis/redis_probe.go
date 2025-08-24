@@ -59,7 +59,7 @@ func (p *ReadProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ReadProbe) MetadataString() string {
-	return fmt.Sprintf("Node: %s | Region: %s", p.Addr, p.Region)
+	return fmt.Sprintf("Node: %s , Region: %s", p.Addr, p.Region)
 }
 
 type WriteProbe struct {
@@ -103,5 +103,5 @@ func (p *WriteProbe) Probe(ctx context.Context) error {
 }
 
 func (p *WriteProbe) MetadataString() string {
-	return fmt.Sprintf("Node: %s | Region: %s", p.Addr, p.Region)
+	return fmt.Sprintf("Node: %s , Region: %s", p.Addr, p.Region)
 }

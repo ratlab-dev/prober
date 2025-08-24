@@ -51,5 +51,5 @@ func (p *ClusterProbe) Probe(ctx context.Context) error {
 }
 
 func (p *ClusterProbe) MetadataString() string {
-	return fmt.Sprintf("Nodes: %v | Region: %s", p.Addrs, p.Region)
+	return fmt.Sprintf("Nodes: %v , Region: %s", p.Addrs, p.Region)
 }

@@ -55,5 +55,5 @@ func (p *TCPProbe) Probe(ctx context.Context) error {
 func (p *TCPProbe) Close() {}
 
 func (p *TCPProbe) MetadataString() string {
-	return fmt.Sprintf("addresses: %v | region: %s", p.Addresses, p.Region)
+	return fmt.Sprintf("addresses: %v , region: %s", p.Addresses, p.Region)
 }
