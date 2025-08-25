@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -13,11 +14,12 @@ import (
 )
 
 func main() {
-	// Path to the config file
+	// Path to the config file: use first argument if provided, else default
 	configPath := "config.yaml"
-	if len(os.Args) <= 1 {
-		log.Println("Usage: prober <config.yaml>")
-		configPath = "config.yaml"
+	if len(os.Args) > 1 {
+		configPath = os.Args[1]
+	} else {
+		log.Println("Usage: prober <config.yaml> (defaulting to config.yaml)")
 	}
 
 	// Initialize Prometheus metrics (if used)
@@ -58,14 +60,16 @@ func main() {
 	// Initial load
 	loadAndUpdateProbes()
 
-	// Set up file watcher for config.yaml
+	// Set up file watcher for parent directory of config.yaml (for Kubernetes ConfigMap support)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("Failed to create fsnotify watcher: %v", err)
 	}
 	defer watcher.Close()
-	if err := watcher.Add(configPath); err != nil {
-		log.Fatalf("Failed to watch config file: %v", err)
+	// Always deduce configDir from configPath
+	configDir := filepath.Dir(configPath)
+	if err := watcher.Add(configDir); err != nil {
+		log.Fatalf("Failed to watch config directory: %v", err)
 	}
 
 	// Debounce timer to avoid rapid reloads
@@ -87,16 +91,20 @@ func main() {
 	// Main event loop
 	for {
 		select {
-		case <-ctx.Done():
-			manager.Stop()
-			return
 		case event := <-watcher.Events:
-			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename) != 0 {
-				debounce.Reset(500 * time.Millisecond)
+			// k8s configmaps uses symlinks, we need this workaround.
+			// original configmap file is removed
+			if event.Op == fsnotify.Remove {
+				// remove the watcher since the file is removed
+				watcher.Remove(event.Name)
+				// add a new watcher pointing to the new symlink/file
+				watcher.Add(configPath)
+				loadAndUpdateProbes()
 			}
-		case <-debounce.C:
-			log.Println("Config file changed, reloading probes...")
-			loadAndUpdateProbes()
+			// also allow normal files to be modified and reloaded.
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				loadAndUpdateProbes()
+			}
 		case err := <-watcher.Errors:
 			log.Printf("fsnotify error: %v", err)
 		}

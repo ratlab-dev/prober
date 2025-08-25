@@ -3,7 +3,7 @@ defaultDuration: 5s
 http:
   defaultDuration: 10s
   clusters:
-    - name: example
+    - name: example-test-2
       endpoint: https://httpbin.org/status/200
       method: GET
       body: ""
