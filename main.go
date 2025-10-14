@@ -91,6 +91,11 @@ func main() {
 	// Main event loop
 	for {
 		select {
+		case <-ctx.Done():
+			log.Println("Context cancelled, stopping probe manager...")
+			manager.Stop()
+			log.Println("Graceful shutdown complete")
+			return
 		case event := <-watcher.Events:
 			// k8s configmaps uses symlinks, we need this workaround.
 			// original configmap file is removed
