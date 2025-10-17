@@ -222,7 +222,18 @@ func RunMySQL(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 }
 
 func RunKafka(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
+	sourceRegion := os.Getenv("SOURCE_REGION")
+	if sourceRegion == "" {
+		sourceRegion = "local"
+	}
+	nodeName := os.Getenv("NODE_NAME")
+	if nodeName == "" {
+		nodeName = "local"
+	}
 	for _, cluster := range cfg.Kafka.Clusters {
+		if cluster.Region == "" {
+			log.Printf("ERROR: region missing for Kafka cluster %s (source region: %s)", cluster.Name, sourceRegion)
+		}
 		dur := cluster.Duration.ToDuration(
 			cfg.Kafka.DefaultDuration.ToDuration(
 				cfg.DefaultDuration.ToDuration(10 * time.Second),
@@ -232,19 +243,38 @@ func RunKafka(ctx context.Context, cfg *Config, statusCh chan<- statusMsg) {
 		if ms < 100 {
 			ms = 100
 		}
-		readProbe := &kafkaprobe.ReadProbe{
-			Brokers: cluster.Brokers,
-			Topic:   cluster.Topic,
-			Region:  cluster.Region,
+		if cluster.Tasks.Read {
+			readProbe, err := kafkaprobe.NewReadProbe(cluster.Brokers, cluster.Topic)
+			if err != nil {
+				log.Printf("could not create kafka read probe for cluster: %s, err: %v", cluster.Name, err)
+				continue
+			}
+			readProbe.Region = cluster.Region
+			launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Brokers, ","), "KAFKA_READ", readProbe, statusCh,
+				func() {
+					IncProbeSuccess("kafka", "read", cluster.Name, sourceRegion, cluster.Region)
+				},
+				func() {
+					IncProbeFailure("kafka", "read", cluster.Name, sourceRegion, cluster.Region)
+				},
+			)
 		}
-		launchProbeWithDuration(ctx, ms, cluster.Name, "", "KAFKA_READ", readProbe, statusCh, nil, nil)
-
-		writeProbe := &kafkaprobe.WriteProbe{
-			Brokers: cluster.Brokers,
-			Topic:   cluster.Topic,
-			Region:  cluster.Region,
+		if cluster.Tasks.Write {
+			writeProbe, err := kafkaprobe.NewWriteProbe(cluster.Brokers, cluster.Topic)
+			if err != nil {
+				log.Printf("could not create kafka write probe for cluster: %s, err: %v", cluster.Name, err)
+				continue
+			}
+			writeProbe.Region = cluster.Region
+			launchProbeWithDuration(ctx, ms, cluster.Name, strings.Join(cluster.Brokers, ","), "KAFKA_WRITE", writeProbe, statusCh,
+				func() {
+					IncProbeSuccess("kafka", "write", cluster.Name, sourceRegion, cluster.Region)
+				},
+				func() {
+					IncProbeFailure("kafka", "write", cluster.Name, sourceRegion, cluster.Region)
+				},
+			)
 		}
-		launchProbeWithDuration(ctx, ms, cluster.Name, "", "KAFKA_WRITE", writeProbe, statusCh, nil, nil)
 	}
 }
 

@@ -83,6 +83,20 @@ redisCluster:
         read: true
         write: true
 
+# Kafka probe config
+kafka:
+  defaultDuration: 10s
+  clusters:
+    - name: test
+      brokers:
+        - 127.0.0.1:9092
+      topic: test-probe-topic
+      duration: 15s
+      region: "us-east-1"  # <-- Add your region here
+      tasks:
+        read: true
+        write: true
+
 # TCP probe config
 # Probes google.com:443 every 5 minutes
 
