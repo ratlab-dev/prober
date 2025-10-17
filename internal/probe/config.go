@@ -60,12 +60,17 @@ type MySQLCluster struct {
 	Region     string         `yaml:"region"`
 	Tasks      MySQLTasks     `yaml:"tasks"`
 }
+type KafkaTasks struct {
+	Read  bool `yaml:"read"`
+	Write bool `yaml:"write"`
+}
 type KafkaCluster struct {
 	Name     string         `yaml:"name"`
 	Brokers  []string       `yaml:"brokers"`
 	Topic    string         `yaml:"topic"`
 	Duration DurationString `yaml:"duration"`
 	Region   string         `yaml:"region"`
+	Tasks    KafkaTasks     `yaml:"tasks"`
 }
 type RedisTasks struct {
 	Read  bool `yaml:"read"`
