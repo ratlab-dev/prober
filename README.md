@@ -3,7 +3,7 @@
 Prober is a health and performance monitoring tool designed to periodically probe and report the status of various infrastructure components, including S3-compatible object stores, MySQL databases, Kafka clusters, HTTP(S) endpoints, and Redis (standalone and cluster) instances. It is intended for use in environments where continuous verification of service availability and latency is critical.
 
 ## Features
-- Periodic read/write probes for S3, MySQL, HTTP(S), and Redis (standalone and cluster)
+- Periodic read/write probes for S3, MySQL, Kafka, HTTP(S), and Redis (standalone and cluster)
 - **Live config reload**: Prober watches `config.yaml` for changes and reloads only the affected probes, without restarting the service or unaffected probes
 - **Config error resilience**: If the config is invalid, prober continues running with the last good config and logs persistent errors until fixed
 - **Per-probe metadata**: All probes provide a human-readable `MetadataString()` for logging and debugging
@@ -63,7 +63,7 @@ docker-compose up
 To add a new probe type, implement the `Prober` interface (including `MetadataString()`) in a new package under `internal/probe/` and register it in `probe.go`.
 
 ## Notes
-- **Kafka probe is not yet working**: The Kafka probe is a placeholder and does not perform real health checks yet.
+- **Kafka probe**: Fully functional with cluster health monitoring via metadata checks (read) and message production/consumption (write).
 - **Redis probes are fixed**: Redis (standalone and cluster) probes are robust and support per-cluster live reload.
 - **HTTP probe**: Fully supports proxy, custom headers, and status code validation.
 - **Config reload**: Prober is resilient to config errors and will not stop running if the config is broken.
